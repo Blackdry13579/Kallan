@@ -42,8 +42,13 @@ class LocalAIService {
   // Hors ligne → Gemma si installé, sinon heuristique intelligente
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Future<Map<String, dynamic>> generateFlashcards({required String text}) async {
-    final subject = _detectSubjectHeuristic(text);
+  Future<Map<String, dynamic>> generateFlashcards({
+    required String text,
+    String? userSubject,
+    String? userContext,
+  }) async {
+    // Priorité : sujet fourni par l'utilisateur, sinon heuristique
+    final subject = userSubject ?? _detectSubjectHeuristic(text);
 
     if (await canUseOnlineAI()) {
       debugPrint('[KALAN AI] En ligne → Qwen...');
@@ -65,7 +70,7 @@ class LocalAIService {
       debugPrint('[KALAN AI] Hors ligne ou HF_TOKEN absent → offline');
     }
 
-    final offline = await _generateOfflineFlashcards(text, subject);
+    final offline = await _generateOfflineFlashcards(text, subject, context: userContext);
     return {
       'subject': subject,
       'flashcards': offline.cards,
@@ -163,7 +168,7 @@ Règles :
         List<Map<String, String>> cards,
         String mode,
         bool modelMissing
-      })> _generateOfflineFlashcards(String text, String subject) async {
+      })> _generateOfflineFlashcards(String text, String subject, {String? context}) async {
     if (text.trim().length < 10) {
       return (cards: _smartHeuristic(text), mode: 'heuristic', modelMissing: false);
     }
@@ -179,7 +184,9 @@ Règles :
       // Création lazy : TfLite ne charge que maintenant, pas avant
       _gemmaService ??= GemmaService();
       final truncated = text.length > 4000 ? '${text.substring(0, 4000)}...' : text;
-      final prompt = _buildGemmaPrompt(truncated, subject);
+      final lang = _detectLanguage(truncated);
+      final prompt = _buildGemmaPrompt(truncated, subject, context: context, lang: lang);
+      debugPrint('[KALAN AI] Langue détectée : $lang');
       final raw = await _gemmaService!
           .generateText(prompt, maxTokens: 768)
           .timeout(const Duration(seconds: 90));
@@ -195,25 +202,45 @@ Règles :
     return (cards: _smartHeuristic(text), mode: 'heuristic', modelMissing: false);
   }
 
-  // ─── Prompt Gemma (few-shot Q/R) ──────────────────────────────────────────
+  // ─── Détection langue source ───────────────────────────────────────────────
 
-  String _buildGemmaPrompt(String text, String subject) => '''Tu es un professeur expert en $subject. Génère exactement 5 paires Question/Réponse sur le texte suivant. Réponse = 1 à 3 mots max. Ne répète jamais la question dans la réponse.
+  String _detectLanguage(String text) {
+    final lower = text.toLowerCase();
+    int frScore = 0, enScore = 0;
+    const frWords = [' le ', ' la ', ' les ', ' de ', ' du ', ' des ', ' une ', ' et ', ' est ', ' sont ', ' dans ', ' pour ', ' avec ', ' qui ', ' que ', ' ce ', ' se ', ' sur ', ' au ', ' il ', ' elle ', ' nous ', ' vous '];
+    const enWords = [' the ', ' is ', ' are ', ' was ', ' were ', ' have ', ' has ', ' had ', ' will ', ' would ', ' can ', ' could ', ' this ', ' that ', ' from ', ' with ', ' and ', ' but ', ' for ', ' in ', ' of ', ' to ', ' they ', ' their '];
+    for (final w in frWords) if (lower.contains(w)) frScore++;
+    for (final w in enWords) if (lower.contains(w)) enScore++;
+    return enScore > frScore ? 'anglais' : 'français';
+  }
 
-TEXTE : $text
+  // ─── Prompt Gemma : bilingue, contexte, format robuste ────────────────────
 
-Réponds en suivant EXACTEMENT ce format (5 paires, pas plus, pas moins) :
+  String _buildGemmaPrompt(String text, String subject, {String? context, String lang = 'français'}) {
+    final contextPart = (context != null && context.isNotEmpty)
+        ? '\nCONTEXTE DE L\'ÉLÈVE : $context\n'
+        : '';
+    return '''Tu es un professeur expert en $subject.$contextPart
+Langue du texte : $lang. Génère tes questions et réponses DANS CETTE MÊME LANGUE.
+Réponse = 1 à 4 mots max. Ne répète jamais la question dans la réponse.
+
+TEXTE :
+$text
+
+Format EXACT (5 paires) :
 Q1: [question]
-R1: [réponse courte]
+R1: [réponse]
 Q2: [question]
-R2: [réponse courte]
+R2: [réponse]
 Q3: [question]
-R3: [réponse courte]
+R3: [réponse]
 Q4: [question]
-R4: [réponse courte]
+R4: [réponse]
 Q5: [question]
-R5: [réponse courte]
+R5: [réponse]
 
 Q1:''';
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // GÉNÉRATION FLASHCARD UNIQUE — 3 CAS (Qwen uniquement)

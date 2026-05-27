@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,7 +6,6 @@ import '../../core/utils/level_utils.dart';
 import '../../data/local/database_helper.dart';
 import '../blocs/user/user_bloc.dart';
 import '../blocs/user/user_state.dart';
-import '../widgets/zone_banner.dart';
 import 'quiz_screen.dart';
 
 class RoadmapStep {
@@ -38,46 +37,49 @@ class RoadmapScreen extends StatefulWidget {
 
 class _RoadmapScreenState extends State<RoadmapScreen> {
   final List<RoadmapStep> roadmapSteps = [
-    const RoadmapStep(index: 0, title: 'Semailles', description: 'Sème tes premières graines.', icon: Icons.eco_rounded, level: 1, levelTitle: 'Graine', xpRequired: 0),
-    const RoadmapStep(index: 1, title: 'Première Pousse', description: 'Les premières feuilles apparaissent.', icon: Icons.grass_rounded, level: 1, levelTitle: 'Graine', xpRequired: 50),
-    const RoadmapStep(index: 2, title: 'Racines Fortes', description: 'Ancre tes connaissances profondément.', icon: Icons.yard_rounded, level: 2, levelTitle: 'Baobab', xpRequired: 100),
-    const RoadmapStep(index: 3, title: 'Tronc Solide', description: 'Ton savoir devient robuste.', icon: Icons.forest_rounded, level: 2, levelTitle: 'Baobab', xpRequired: 170),
-    const RoadmapStep(index: 4, title: 'Ombrage', description: 'Offre ta sagesse protectrice.', icon: Icons.park_rounded, level: 2, levelTitle: 'Baobab', xpRequired: 240),
-    const RoadmapStep(index: 5, title: 'L\'Étincelle', description: 'Le grand feu commence.', icon: Icons.lightbulb_rounded, level: 3, levelTitle: 'Feu de Brousse', xpRequired: 300),
-    const RoadmapStep(index: 6, title: 'Propagation', description: 'Rien ne peut t\'arrêter.', icon: Icons.whatshot_rounded, level: 3, levelTitle: 'Feu de Brousse', xpRequired: 400),
-    const RoadmapStep(index: 7, title: 'Grand Brasier', description: 'Ta soif d\'apprendre brille.', icon: Icons.local_fire_department_rounded, level: 3, levelTitle: 'Feu de Brousse', xpRequired: 500),
-    const RoadmapStep(index: 8, title: 'Paroles d\'Or', description: 'Apprends tel un Griot.', icon: Icons.auto_stories_rounded, level: 4, levelTitle: 'Griot', xpRequired: 600),
-    const RoadmapStep(index: 9, title: 'Kora Sacrée', description: 'Trouve le rythme parfait.', icon: Icons.music_note_rounded, level: 4, levelTitle: 'Griot', xpRequired: 700),
-    const RoadmapStep(index: 10, title: 'Légendes', description: 'Plonge dans les récits.', icon: Icons.history_edu_rounded, level: 4, levelTitle: 'Griot', xpRequired: 1000),
-    const RoadmapStep(index: 11, title: 'Transmission', description: 'Partage tes connaissances.', icon: Icons.record_voice_over_rounded, level: 4, levelTitle: 'Griot', xpRequired: 1100),
-    const RoadmapStep(index: 12, title: 'Initiation', description: 'Sous le masque du savoir.', icon: Icons.visibility_rounded, level: 5, levelTitle: 'Masque', xpRequired: 1200),
-    const RoadmapStep(index: 13, title: 'Danse Sacrée', description: 'Jongle entre les matières.', icon: Icons.theater_comedy_rounded, level: 5, levelTitle: 'Masque', xpRequired: 1400),
-    const RoadmapStep(index: 14, title: 'Mystères', description: 'Comprends la profondeur.', icon: Icons.psychology_rounded, level: 5, levelTitle: 'Masque', xpRequired: 1600),
-    const RoadmapStep(index: 15, title: 'Gardien', description: 'L\'assiduité est ton pouvoir.', icon: Icons.security_rounded, level: 5, levelTitle: 'Masque', xpRequired: 1800),
-    const RoadmapStep(index: 16, title: 'Sommet', description: 'Tu es un Ancêtre vénéré.', icon: Icons.auto_awesome_rounded, level: 6, levelTitle: 'Ancêtre', xpRequired: 2000),
+    const RoadmapStep(index: 0, title: 'Semailles', description: 'Plante tes premières intentions.', icon: Icons.eco_rounded, level: 1, levelTitle: 'Graine', xpRequired: 0),
+    const RoadmapStep(index: 1, title: 'Éclosion', description: 'La vie commence à percer.', icon: Icons.auto_awesome_rounded, level: 1, levelTitle: 'Graine', xpRequired: 250),
+    const RoadmapStep(index: 2, title: 'Premières Feuilles', description: 'Le savoir commence à verdir.', icon: Icons.grass_rounded, level: 2, levelTitle: 'Jeune Pousse', xpRequired: 500),
+    const RoadmapStep(index: 3, title: 'Vers le Ciel', description: 'Ta curiosité s\'élève.', icon: Icons.trending_up_rounded, level: 2, levelTitle: 'Jeune Pousse', xpRequired: 1000),
+    const RoadmapStep(index: 4, title: 'Ancrage', description: 'Tes racines deviennent fortes.', icon: Icons.yard_rounded, level: 3, levelTitle: 'Baobab', xpRequired: 1500),
+    const RoadmapStep(index: 5, title: 'Baobab Majestueux', description: 'Ton savoir est un pilier.', icon: Icons.park_rounded, level: 3, levelTitle: 'Baobab', xpRequired: 2500),
+    const RoadmapStep(index: 6, title: 'L\'Étincelle', description: 'La passion s\'allume.', icon: Icons.lightbulb_rounded, level: 4, levelTitle: 'Feu de Brousse', xpRequired: 3500),
+    const RoadmapStep(index: 7, title: 'Grand Brasier', description: 'Ta soif d\'apprendre brille.', icon: Icons.local_fire_department_rounded, level: 4, levelTitle: 'Feu de Brousse', xpRequired: 5200),
+    const RoadmapStep(index: 8, title: 'Paroles d\'Or', description: 'Apprends tel un Griot.', icon: Icons.auto_stories_rounded, level: 5, levelTitle: 'Griot', xpRequired: 7000),
+    const RoadmapStep(index: 9, title: 'Kora Sacrée', description: 'Trouve le rythme parfait.', icon: Icons.music_note_rounded, level: 5, levelTitle: 'Griot', xpRequired: 9500),
+    const RoadmapStep(index: 10, title: 'Légendes', description: 'Plonge dans les récits.', icon: Icons.history_edu_rounded, level: 6, levelTitle: 'Masque', xpRequired: 12000),
+    const RoadmapStep(index: 11, title: 'Initiation', description: 'Sous le masque du savoir.', icon: Icons.visibility_rounded, level: 6, levelTitle: 'Masque', xpRequired: 16000),
+    const RoadmapStep(index: 12, title: 'Transmission', description: 'Partage tes connaissances.', icon: Icons.record_voice_over_rounded, level: 7, levelTitle: 'Gardien', xpRequired: 20000),
+    const RoadmapStep(index: 13, title: 'Vigie', description: 'Surveille tes progrès.', icon: Icons.remove_red_eye_rounded, level: 7, levelTitle: 'Gardien', xpRequired: 27000),
+    const RoadmapStep(index: 14, title: 'Sagesse Antique', description: 'Écoute les voix du passé.', icon: Icons.interpreter_mode_rounded, level: 8, levelTitle: 'Ancêtre', xpRequired: 35000),
+    const RoadmapStep(index: 15, title: 'Immortalité', description: 'Ton savoir ne périra pas.', icon: Icons.all_inclusive_rounded, level: 8, levelTitle: 'Ancêtre', xpRequired: 47000),
+    const RoadmapStep(index: 16, title: 'Mystères', description: 'Comprends la profondeur.', icon: Icons.psychology_rounded, level: 9, levelTitle: 'Sage', xpRequired: 60000),
+    const RoadmapStep(index: 17, title: 'Harmonie', description: 'La fusion des savoirs.', icon: Icons.mediation_rounded, level: 9, levelTitle: 'Sage', xpRequired: 80000),
+    const RoadmapStep(index: 18, title: 'Sommet', description: 'Tu es une Lumière éternelle.', icon: Icons.auto_awesome_rounded, level: 10, levelTitle: 'Lumière', xpRequired: 100000),
+    const RoadmapStep(index: 19, title: 'Illumination', description: 'L\'infini du savoir.', icon: Icons.wb_sunny_rounded, level: 10, levelTitle: 'Lumière', xpRequired: 130000),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Theme(
       data: Theme.of(context).copyWith(
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(Theme.of(context).textTheme),
+        textTheme: GoogleFonts.fredokaTextTheme(Theme.of(context).textTheme),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F2EA),
+        backgroundColor: const Color(0xFFF2EAD3),
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF2D6A2D)),
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
             'Parcours d\'Apprentissage',
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
+            style: GoogleFonts.fredoka(
+              color: const Color(0xFF1A1A1A),
+              fontWeight: FontWeight.w700,
               fontSize: 20,
             ),
           ),
@@ -90,78 +92,102 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
             if (state is UserLoaded) {
               final points = state.profile['points'] as int? ?? 0;
               final userId = state.profile['uuid'] as String? ?? '';
-              final levelInfo = LevelUtils.getLevelInfo(points);
 
               int activeIndex = 0;
               for (int i = 0; i < roadmapSteps.length; i++) {
-                if (points >= roadmapSteps[i].xpRequired) activeIndex = i;
-                else break;
+                if (points >= roadmapSteps[i].xpRequired) {
+                  activeIndex = i;
+                } else {
+                  break;
+                }
               }
+
+              final levelInfo = LevelUtils.getLevelInfo(points);
+              const double headerHeight = 180.0; // Hauteur estimée de la bannière
+              const double nodeHeight = 200.0;   // Hauteur estimée d'une étape (bulle + texte)
+              const double verticalGap = 150.0;  // L'espace égal souhaité entre chaque élément
+              
+              const double levelBlockHeight = headerHeight + (2 * nodeHeight) + (3 * verticalGap);
+              final double mapHeight = LevelUtils.levels.length * levelBlockHeight + 200;
 
               return Column(
                 children: [
-                  _buildHeaderProgress(points, levelInfo, levelInfo.level),
+                  _buildHeaderProgress(points, levelInfo),
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final screenWidth = constraints.maxWidth;
-                        final mapHeight = 300.0 + (roadmapSteps.length * 200.0);
-
                         return SingleChildScrollView(
                           physics: const BouncingScrollPhysics(),
-                          child: Stack(
-                            children: [
-                              _buildWorldBackgrounds(mapHeight, screenWidth),
-                              Positioned.fill(
-                                child: CustomPaint(
-                                  painter: SerpentinePathPainter(
-                                    steps: roadmapSteps,
-                                    userPoints: points,
-                                    screenWidth: screenWidth,
+                          child: Container(
+                            color: const Color(0xFFF2EAD3),
+                            child: Stack(
+                              children: [
+                                Positioned.fill(
+                                  child: CustomPaint(
+                                    painter: ParchmentPatternPainter(),
                                   ),
                                 ),
-                              ),
-                              Positioned(top: 40, left: 20, right: 20, child: Center(child: ZoneBanner(title: 'MONDE DES GRAINES', levelSubtitle: 'Niveau 1', color: Colors.white, bgColor: const Color(0xFF4CAF50).withValues(alpha: 0.8)))),
-                              Positioned(top: 440, left: 20, right: 20, child: Center(child: ZoneBanner(title: 'MONDE DU BAOBAB', levelSubtitle: 'Niveau 2', color: Colors.white, bgColor: const Color(0xFF795548).withValues(alpha: 0.8)))),
-                              Positioned(top: 1040, left: 20, right: 20, child: Center(child: ZoneBanner(title: 'MONDE DU FEU', levelSubtitle: 'Niveau 3', color: Colors.white, bgColor: const Color(0xFFC92A2A).withValues(alpha: 0.8)))),
-                              Positioned(top: 1640, left: 20, right: 20, child: Center(child: ZoneBanner(title: 'MONDE DU GRIOT', levelSubtitle: 'Niveau 4', color: Colors.white, bgColor: const Color(0xFFE07B39).withValues(alpha: 0.8)))),
-                              Positioned(top: 2440, left: 20, right: 20, child: Center(child: ZoneBanner(title: 'MONDE DES MASQUES', levelSubtitle: 'Niveau 5', color: Colors.white, bgColor: const Color(0xFF673AB7).withValues(alpha: 0.8)))),
-                              Positioned(top: 3240, left: 20, right: 20, child: Center(child: ZoneBanner(title: 'MONDE DES ANCÊTRES', levelSubtitle: 'Niveau 6', color: Colors.white, bgColor: const Color(0xFF009688).withValues(alpha: 0.8)))),
-                              SizedBox(
-                                height: mapHeight,
-                                width: screenWidth,
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: List.generate(roadmapSteps.length, (index) {
-                                    final step = roadmapSteps[index];
-                                    bool isCompleted = points >= step.xpRequired && index < activeIndex;
-                                    bool isActive = index == activeIndex;
-                                    bool isLocked = points < step.xpRequired;
-
-                                    if (points >= roadmapSteps.last.xpRequired && index == roadmapSteps.length - 1) {
-                                      isCompleted = false;
-                                      isActive = true;
-                                      isLocked = false;
-                                    }
-
-                                    double x = screenWidth / 2 + 85 * sin(index * 1.0);
-                                    double y = 160 + index * 200.0;
-
-                                    return Positioned(
-                                      left: x - 90, 
-                                      top: y - 70,
-                                      child: PremiumRoadmapNode(
-                                        step: step,
-                                        isCompleted: isCompleted,
-                                        isActive: isActive,
-                                        isLocked: isLocked,
-                                        onTap: () => _showStepDetails(context, step, points, isCompleted, isActive, isLocked, userId),
-                                      ),
-                                    );
-                                  }),
+                                Positioned.fill(
+                                  child: CustomPaint(
+                                    painter: SerpentinePathPainter(
+                                      steps: roadmapSteps,
+                                      userPoints: points,
+                                      screenWidth: screenWidth,
+                                      headerHeight: headerHeight,
+                                      nodeHeight: nodeHeight,
+                                      verticalGap: verticalGap,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                                SizedBox(
+                                  height: mapHeight,
+                                  width: screenWidth,
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      ...LevelUtils.levels.map((lvl) {
+                                        final double yPos = (lvl.level - 1) * levelBlockHeight + 50;
+                                        return Positioned(
+                                          top: yPos,
+                                          left: 0,
+                                          right: 0,
+                                          child: _buildWorldHeader(lvl, screenWidth),
+                                        );
+                                      }),
+                                      ...List.generate(roadmapSteps.length, (index) {
+                                        final step = roadmapSteps[index];
+                                        bool isCompleted = points >= step.xpRequired && index < activeIndex;
+                                        bool isActive = index == activeIndex;
+                                        bool isLocked = points < step.xpRequired;
+
+                                        if (points >= roadmapSteps.last.xpRequired && index == roadmapSteps.length - 1) {
+                                          isCompleted = false;
+                                          isActive = true;
+                                          isLocked = false;
+                                        }
+
+                                        final bool isFirstStepInLevel = index % 2 == 0;
+                                        final double yPos = ((step.level - 1) * levelBlockHeight) + 50 + headerHeight + verticalGap + (isFirstStepInLevel ? 0 : (nodeHeight + verticalGap));
+                                        double x = screenWidth / 2 + 100 * math.sin(index * 1.8);
+
+                                        return Positioned(
+                                          left: x - 65, 
+                                          top: yPos,
+                                          child: PremiumRoadmapNode(
+                                            step: step,
+                                            isCompleted: isCompleted,
+                                            isActive: isActive,
+                                            isLocked: isLocked,
+                                            onTap: () => _showStepDetails(context, step, points, isCompleted, isActive, isLocked, userId),
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -177,53 +203,170 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
     );
   }
 
-  Widget _buildWorldBackgrounds(double mapHeight, double screenWidth) {
+  Widget _buildWorldHeader(LevelInfo lvl, double width) {
+    String worldName;
+    String worldDescription;
+    Color accentColor;
+    
+    switch (lvl.level) {
+      case 1: 
+        worldName = 'MONDE DU FLORISSANT'; 
+        worldDescription = 'Les bases qui germent';
+        accentColor = const Color(0xFF2D6A2D); 
+        break;
+      case 2: 
+        worldName = 'MONDE DES RACINES'; 
+        worldDescription = 'Tu prends racine';
+        accentColor = const Color(0xFF43A047); 
+        break;
+      case 3: 
+        worldName = 'MONDE DU BAOBAB'; 
+        worldDescription = 'Tes racines de savoir';
+        accentColor = const Color(0xFF854F0B); 
+        break;
+      case 4: 
+        worldName = 'MONDE DU FEU'; 
+        worldDescription = 'Allume la flamme';
+        accentColor = const Color(0xFFC92A2A); 
+        break;
+      case 5: 
+        worldName = 'MONDE DU GRIOT'; 
+        worldDescription = 'Raconte ce que tu sais';
+        accentColor = const Color(0xFFE07B39); 
+        break;
+      case 6: 
+        worldName = 'MONDE DES MASQUES'; 
+        worldDescription = 'Maîtrise les rituels';
+        accentColor = const Color(0xFF673AB7); 
+        break;
+      case 7: 
+        worldName = 'MONDE DES GARDIENS'; 
+        worldDescription = 'Protège la sagesse';
+        accentColor = const Color(0xFF3F51B5); 
+        break;
+      case 8: 
+        worldName = 'MONDE DES ANCÊTRES'; 
+        worldDescription = 'Deviens légende';
+        accentColor = const Color(0xFF795548); 
+        break;
+      case 9: 
+        worldName = 'MONDE DES SAGES'; 
+        worldDescription = 'Lis dans les étoiles';
+        accentColor = const Color(0xFF009688); 
+        break;
+      case 10: 
+        worldName = 'MONDE DE LA LUMIÈRE'; 
+        worldDescription = 'Deviens le soleil';
+        accentColor = const Color(0xFFB8860B); 
+        break;
+      default: 
+        worldName = 'NOUVEAU MONDE'; 
+        worldDescription = 'Continue ton voyage';
+        accentColor = Colors.grey;
+    }
+
     return Column(
       children: [
-        _buildWorldSection('level-1-graine.jpg', 400, screenWidth),
-        _buildWorldSection('level-2-baobab.jpg', 600, screenWidth),
-        _buildWorldSection('level-3-feu.jpg', 600, screenWidth),
-        _buildWorldSection('level-4-griot.jpg', 800, screenWidth),
-        _buildWorldSection('level-5-masque.jpg', 800, screenWidth),
-        _buildWorldSection('level-6-ancetre.jpg', 500, screenWidth),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          height: 140,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Fond de la bannière
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    colors: [accentColor.withValues(alpha: 0.8), accentColor.withValues(alpha: 0.4)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(color: accentColor.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 8)),
+                  ],
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+                ),
+              ),
+              // Image d'ambiance
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.asset(
+                  'assets/roadmap/${lvl.assetImage}',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  color: Colors.black.withValues(alpha: 0.3),
+                  colorBlendMode: BlendMode.darken,
+                ),
+              ),
+              // Mascotte
+              Positioned(
+                left: -10,
+                bottom: -15,
+                child: Image.asset(
+                  'assets/roadmap/${lvl.mascotImage}',
+                  height: 150,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              // Contenu textuel
+              Positioned(
+                right: 20,
+                top: 0,
+                bottom: 0,
+                left: 110,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'NIVEAU ${lvl.level}',
+                        style: TextStyle(color: accentColor, fontWeight: FontWeight.w900, fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      worldName,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      worldDescription,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildWorldSection(String img, double height, double width) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/roadmap/$img'),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.1), BlendMode.darken),
-        ),
-      ),
-    );
-  }
-
-  String _levelBgImage(int level) => switch (level) {
-    2 => 'level-2-baobab.jpg',
-    3 => 'level-3-feu.jpg',
-    4 => 'level-4-griot.jpg',
-    5 => 'level-5-masque.jpg',
-    6 => 'level-6-ancetre.jpg',
-    _ => 'level-1-graine.jpg',
-  };
-
-  Widget _buildHeaderProgress(int points, LevelInfo levelInfo, int level) {
+  Widget _buildHeaderProgress(int points, LevelInfo levelInfo) {
     final double progress = (points / levelInfo.nextLevelPoints).clamp(0.0, 1.0);
-
     return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/roadmap/${_levelBgImage(level)}'),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.50), BlendMode.darken),
-        ),
-      ),
+      color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         children: [
@@ -233,14 +376,13 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
                 ),
                 child: Center(
                   child: Hero(
                     tag: 'mascot_roadmap',
-                    child: Image.asset('assets/images/Bonome.png', height: 38, errorBuilder: (_,__,___) => const Icon(Icons.school, color: Colors.white)),
+                    child: Image.asset('assets/images/Bonome.png', height: 38, errorBuilder: (_,__,___) => const Icon(Icons.school, color: Color(0xFF2D6A2D))),
                   ),
                 ),
               ),
@@ -251,27 +393,23 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
                   children: [
                     Text(
                       'Progression Actuelle',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w800),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w800),
                     ),
                     Row(
                       children: [
-                        Flexible(
-                          child: Text(
-                            levelInfo.title.toUpperCase(),
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
-                          ),
+                        Text(
+                          levelInfo.title.toUpperCase(),
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
                         ),
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.25),
+                            color: const Color(0xFF4CAF50),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1),
                           ),
                           child: Text(
-                            'Niveau $level',
+                            'Niveau ${levelInfo.level}',
                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
                           ),
                         ),
@@ -282,7 +420,7 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
               ),
               Text(
                 '$points XP',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF2D6A2D)),
               ),
             ],
           ),
@@ -292,8 +430,8 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.25),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF76D572)),
+              backgroundColor: const Color(0xFFE8E4DA),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
             ),
           ),
         ],
@@ -321,7 +459,7 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
                 border: Border.all(color: isLocked ? Colors.grey.shade300 : (isCompleted ? const Color(0xFF4CAF50) : const Color(0xFFE8C87A)), width: 3),
               ),
               child: Image.asset(
-                'assets/roadmap/mascot-${step.level}.png',
+                'assets/roadmap/${LevelUtils.levels[step.level - 1].mascotImage}',
                 height: 60,
                 errorBuilder: (_,__,___) => Icon(isLocked ? Icons.lock_rounded : step.icon, color: isLocked ? Colors.grey : (isCompleted ? const Color(0xFF2D6A2D) : const Color(0xFF854F0B)), size: 42),
               ),
@@ -337,9 +475,11 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
               child: Text(step.description, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.5, color: Color(0xFF555555))),
             ),
             const SizedBox(height: 32),
-            if (isLocked) ...[
+            if (isLocked)
               Text('XP REQUIS : ${step.xpRequired}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+            if (isLocked)
               const SizedBox(height: 12),
+            if (isLocked)
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -348,8 +488,8 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
                   onPressed: () => Navigator.pop(sheetContext),
                   child: const Text('CONTINUE TES RÉVISIONS POUR DÉBLOQUER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
                 ),
-              ),
-            ] else ...[
+              )
+            else
               SizedBox(
                 width: double.infinity,
                 height: 60,
@@ -359,19 +499,17 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
                     Navigator.pop(sheetContext);
                     final dbHelper = DatabaseHelper.instance;
                     final decks = await dbHelper.getDecks(userId);
-                    
                     if (!context.mounted) return;
                     if (decks.isEmpty) { 
-                      _showNoDecksWarning(context); 
+                      _showNoDecksWarning(context);
                     } else {
-                      final randomDeck = decks[Random().nextInt(decks.length)];
+                      final randomDeck = decks[math.Random().nextInt(decks.length)];
                       Navigator.push(context, MaterialPageRoute(builder: (_) => QuizScreen(deckUuid: randomDeck['uuid'], deckTitle: randomDeck['title'] ?? 'Quiz Rapide')));
                     }
                   },
                   child: Text(isCompleted ? 'REFAIRE LE DÉFI' : 'RELEVER LE DÉFI ! (+10 XP)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
                 ),
               ),
-            ],
           ],
         ),
       ),
@@ -411,85 +549,73 @@ class PremiumRoadmapNode extends StatelessWidget {
   Widget build(BuildContext context) {
     Color baseColor = isCompleted ? const Color(0xFF4CAF50) : (isActive ? const Color(0xFFE8C87A) : const Color(0xFFE5E5E5));
     Color shadowColor = isCompleted ? const Color(0xFF2E7D32) : (isActive ? const Color(0xFFCBB06B) : const Color(0xFFAFAFAF));
-
     return GestureDetector(
       onTap: onTap,
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (step.index % 2 == 0) _buildMascot(isLocked),
-          Column(
+          if (isActive) _buildStatusBadge(),
+          Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
             children: [
-              if (isActive) _buildStatusBadge(),
-              Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned(top: 8, child: Container(width: 90, height: 90, decoration: BoxDecoration(color: shadowColor, borderRadius: BorderRadius.circular(28)))),
-                  Container(
-                    width: 90, height: 90,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: isLocked ? Colors.grey.shade300 : baseColor, width: 4),
-                      boxShadow: [if (isActive) BoxShadow(color: baseColor.withValues(alpha: 0.5), blurRadius: 20, spreadRadius: 2)],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: Stack(
-                        children: [
-                          Image.asset(
-                            'assets/roadmap/level-${step.level}.jpg',
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            errorBuilder: (_,__,___) => Container(color: baseColor.withValues(alpha: 0.1)),
-                          ),
-                          Container(color: isLocked ? Colors.black.withValues(alpha: 0.3) : baseColor.withValues(alpha: 0.2)),
-                          Center(
-                            child: isLocked 
-                              ? const Icon(Icons.lock_rounded, color: Colors.white, size: 32)
-                              : Icon(isCompleted ? Icons.check_rounded : step.icon, color: Colors.white, size: 40),
-                          ),
-                        ],
+              Positioned(top: 8, child: Container(width: 130, height: 130, decoration: BoxDecoration(color: shadowColor, shape: BoxShape.circle))),
+              Container(
+                width: 130, height: 130,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: isLocked ? Colors.grey.shade300 : baseColor, width: 5),
+                  boxShadow: [if (isActive) BoxShadow(color: baseColor.withValues(alpha: 0.5), blurRadius: 25, spreadRadius: 4)],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(65),
+                  child: Stack(
+                    children: [
+                      Image.asset(
+                        'assets/roadmap/${LevelUtils.levels[step.level - 1].assetImage}',
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorBuilder: (_,__,___) => Container(color: baseColor.withValues(alpha: 0.1)),
                       ),
-                    ),
+                      Container(color: isLocked ? Colors.black.withValues(alpha: 0.4) : baseColor.withValues(alpha: 0.2)),
+                      Center(
+                        child: isLocked 
+                          ? const Icon(Icons.lock_rounded, color: Colors.white, size: 42)
+                          : Icon(isCompleted ? Icons.check_rounded : step.icon, color: Colors.white, size: 50),
+                      ),
+                    ],
                   ),
-                  Positioned(
-                    top: -8, left: -8,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(color: shadowColor, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
-                      child: Text('${step.index + 1}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 12),
-              Text(step.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: isLocked ? Colors.white70 : Colors.white)),
+              Positioned(
+                top: 0, left: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: shadowColor, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3)),
+                  child: Text('${step.index + 1}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+                ),
+              ),
             ],
           ),
-          if (step.index % 2 != 0) _buildMascot(isLocked),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: 150,
+            child: Text(
+              step.title, 
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16, 
+                fontWeight: FontWeight.w900, 
+                color: isLocked ? Colors.grey : const Color(0xFF1A1A1A),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
-
-  Widget _buildMascot(bool isLocked) {
-    return Container(
-      width: 80,
-      height: 80,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      child: Opacity(
-        opacity: isLocked ? 0.4 : 1.0,
-        child: Image.asset(
-          'assets/roadmap/mascot-${step.level}.png',
-          errorBuilder: (_,__,___) => const SizedBox.shrink(),
-        ),
-      ),
-    );
-  }
-
   Widget _buildStatusBadge() {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -505,42 +631,188 @@ class PremiumRoadmapNode extends StatelessWidget {
   }
 }
 
+class ParchmentPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final random = math.Random(42);
+    
+    // 1. Texture de fond (grain léger)
+    final paintGrain = Paint()
+      ..color = const Color(0xFF854F0B).withValues(alpha: 0.03)
+      ..style = PaintingStyle.fill;
+    
+    for (int i = 0; i < 2000; i++) {
+      double x = random.nextDouble() * size.width;
+      double y = random.nextDouble() * size.height;
+      canvas.drawCircle(Offset(x, y), 0.5, paintGrain);
+    }
+
+    // 2. Fibres du papier
+    final paintFiber = Paint()
+      ..color = const Color(0xFF854F0B).withValues(alpha: 0.05)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    
+    for (int i = 0; i < 800; i++) {
+      double x = random.nextDouble() * size.width;
+      double y = random.nextDouble() * size.height;
+      double length = random.nextDouble() * 30 + 10;
+      double angle = random.nextDouble() * math.pi;
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x + length * math.cos(angle), y + length * math.sin(angle)),
+        paintFiber,
+      );
+    }
+
+    // 3. Tâches d'usure/temps
+    final paintSpot = Paint()
+      ..color = const Color(0xFF854F0B).withValues(alpha: 0.02)
+      ..style = PaintingStyle.fill;
+    
+    for (int i = 0; i < 40; i++) {
+      double x = random.nextDouble() * size.width;
+      double y = random.nextDouble() * size.height;
+      double radius = random.nextDouble() * 80 + 20;
+      canvas.drawCircle(Offset(x, y), radius, paintSpot);
+    }
+
+    // 4. Motifs géométriques ancestraux (Marges)
+    final paintPattern = Paint()
+      ..color = const Color(0xFF854F0B).withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    _drawAfricanPatterns(canvas, size, paintPattern);
+
+    // 5. Effet de bords brûlés (Vignettage)
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final paintVignette = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          Colors.transparent,
+          const Color(0xFF854F0B).withValues(alpha: 0.02),
+          const Color(0xFF854F0B).withValues(alpha: 0.15),
+        ],
+        stops: const [0.6, 0.85, 1.0],
+      ).createShader(rect);
+    
+    canvas.drawRect(rect, paintVignette);
+  }
+
+  void _drawAfricanPatterns(Canvas canvas, Size size, Paint paint) {
+    const double patternSize = 40.0;
+    const double spacing = 120.0;
+
+    // Dessiner des motifs sur les côtés
+    for (double y = 0; y < size.height; y += spacing) {
+      // Gauche
+      _drawSinglePattern(canvas, Offset(20, y), patternSize, paint);
+      // Droite
+      _drawSinglePattern(canvas, Offset(size.width - 60, y + 60), patternSize, paint);
+    }
+  }
+
+  void _drawSinglePattern(Canvas canvas, Offset offset, double size, Paint paint) {
+    // Un motif simple de type "losange avec croix" (inspiré Bogolan)
+    final path = Path();
+    path.moveTo(offset.dx + size / 2, offset.dy);
+    path.lineTo(offset.dx + size, offset.dy + size / 2);
+    path.lineTo(offset.dx + size / 2, offset.dy + size);
+    path.lineTo(offset.dx, offset.dy + size / 2);
+    path.close();
+
+    canvas.drawPath(path, paint);
+    canvas.drawLine(Offset(offset.dx, offset.dy), Offset(offset.dx + size, offset.dy + size), paint);
+    canvas.drawLine(Offset(offset.dx + size, offset.dy), Offset(offset.dx, offset.dy + size), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class SerpentinePathPainter extends CustomPainter {
   final List<RoadmapStep> steps;
   final int userPoints;
   final double screenWidth;
+  final double headerHeight;
+  final double nodeHeight;
+  final double verticalGap;
 
-  SerpentinePathPainter({required this.steps, required this.userPoints, required this.screenWidth});
+  SerpentinePathPainter({
+    required this.steps, 
+    required this.userPoints, 
+    required this.screenWidth, 
+    required this.headerHeight, 
+    required this.nodeHeight, 
+    required this.verticalGap
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (steps.isEmpty) return;
-
-    final paintCompleted = Paint()..color = Colors.white.withValues(alpha: 0.6)..style = PaintingStyle.stroke..strokeWidth = 10..strokeCap = StrokeCap.round;
-    final paintLocked = Paint()..color = Colors.white.withValues(alpha: 0.2)..style = PaintingStyle.stroke..strokeWidth = 10..strokeCap = StrokeCap.round;
+    final double levelBlockHeight = headerHeight + (2 * nodeHeight) + (3 * verticalGap);
+    
+    final paintCompleted = Paint()
+      ..color = const Color(0xFF2D6A2D)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 14
+      ..strokeCap = StrokeCap.round;
+      
+    final paintLocked = Paint()
+      ..color = const Color(0xFF2D6A2D).withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 14
+      ..strokeCap = StrokeCap.round;
 
     for (int i = 0; i < steps.length - 1; i++) {
-      double xPrev = screenWidth / 2 + 85 * sin(i * 1.0);
-      double yPrev = 160 + i * 200.0;
-      double xCurr = screenWidth / 2 + 85 * sin((i + 1) * 1.0);
-      double yCurr = 160 + (i + 1) * 200.0;
+      final stepPrev = steps[i];
+      final stepCurr = steps[i + 1];
+      
+      final bool isFirstStepInLevelPrev = i % 2 == 0;
+      double yPrev = ((stepPrev.level - 1) * levelBlockHeight) + 50 + headerHeight + verticalGap + (isFirstStepInLevelPrev ? 0 : (nodeHeight + verticalGap)) + 65;
+      double xPrev = screenWidth / 2 + 100 * math.sin(i * 1.8);
+      
+      final bool isFirstStepInLevelCurr = (i + 1) % 2 == 0;
+      double yCurr = ((stepCurr.level - 1) * levelBlockHeight) + 50 + headerHeight + verticalGap + (isFirstStepInLevelCurr ? 0 : (nodeHeight + verticalGap)) + 65;
+      double xCurr = screenWidth / 2 + 100 * math.sin((i + 1) * 1.8);
 
       final path = Path();
       path.moveTo(xPrev, yPrev);
-      path.cubicTo(xPrev, yPrev + 100, xCurr, yCurr - 100, xCurr, yCurr);
+      
+      double currentGap = (stepCurr.level > stepPrev.level) ? (verticalGap * 2 + headerHeight) : (verticalGap + nodeHeight);
+      path.cubicTo(xPrev, yPrev + currentGap * 0.5, xCurr, yCurr - currentGap * 0.5, xCurr, yCurr);
 
-      bool isCompleted = userPoints >= steps[i+1].xpRequired;
-      if (isCompleted) {
+      if (userPoints >= stepCurr.xpRequired) {
+        // Segment entièrement complété
         canvas.drawPath(path, paintCompleted);
-      } else {
+      } else if (userPoints <= stepPrev.xpRequired) {
+        // Segment entièrement verrouillé
         _drawDashedPath(canvas, path, paintLocked);
+      } else {
+        // Segment en cours de progression (partiel)
+        double progress = (userPoints - stepPrev.xpRequired) / (stepCurr.xpRequired - stepPrev.xpRequired);
+        progress = progress.clamp(0.0, 1.0);
+        
+        final metrics = path.computeMetrics();
+        for (final metric in metrics) {
+          final double solidLength = metric.length * progress;
+          
+          // Dessiner la partie solide (XP acquis)
+          final solidPath = metric.extractPath(0, solidLength);
+          canvas.drawPath(solidPath, paintCompleted);
+          
+          // Dessiner la partie en pointillés (XP restant)
+          final remainingPath = metric.extractPath(solidLength, metric.length);
+          _drawDashedPath(canvas, remainingPath, paintLocked);
+        }
       }
     }
   }
 
   void _drawDashedPath(Canvas canvas, Path path, Paint paint) {
-    const double dashWidth = 8.0;
-    const double dashSpace = 8.0;
+    const double dashWidth = 12.0;
+    const double dashSpace = 10.0;
     final metrics = path.computeMetrics();
     for (final metric in metrics) {
       double distance = 0.0;
@@ -551,7 +823,6 @@ class SerpentinePathPainter extends CustomPainter {
       }
     }
   }
-
   @override
-  bool shouldRepaint(covariant SerpentinePathPainter oldDelegate) => true;
+  bool shouldRepaint(covariant SerpentinePathPainter oldDelegate) => userPoints != oldDelegate.userPoints;
 }

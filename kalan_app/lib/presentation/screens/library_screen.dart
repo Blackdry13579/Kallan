@@ -260,14 +260,10 @@ class _LibraryScreenState extends State<LibraryScreen>
             ],
           ),
         ),
-        SizedBox(
-          height: 148,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: decks.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, i) => _buildDeckCard(decks[i], color),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: List.generate(decks.length, (i) => _buildDeckCard(decks[i], color)),
           ),
         ),
       ],
@@ -287,52 +283,66 @@ class _LibraryScreenState extends State<LibraryScreen>
           MaterialPageRoute(builder: (_) => FlashcardStudyScreen(deckTitle: deck.title, deckUuid: deck.uuid))),
       onLongPress: () => _confirmDelete(context, deck),
       child: Container(
-        width: 158,
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFEEEAE3), width: 1),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // Barre couleur matière
             Container(
-              height: 4,
-              decoration: BoxDecoration(color: cardColor.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(4)),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: (pct / 100).clamp(0.0, 1.0),
-                child: Container(decoration: BoxDecoration(color: barColor, borderRadius: BorderRadius.circular(4))),
+              width: 4,
+              height: 40,
+              decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(4)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    deck.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
+                  ),
+                  const SizedBox(height: 3),
+                  Text('${deck.cardCount} cartes', style: const TextStyle(fontSize: 11, color: Color(0xFF999999))),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: (pct / 100).clamp(0.0, 1.0),
+                      backgroundColor: const Color(0xFFEEEAE3),
+                      color: barColor,
+                      minHeight: 3,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              deck.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A), height: 1.3),
-            ),
-            const SizedBox(height: 4),
-            Text('${deck.cardCount} cartes', style: const TextStyle(fontSize: 10, color: Color(0xFF999999))),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            const SizedBox(width: 12),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('$pct%', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: barColor)),
+                Text('$pct%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: barColor)),
+                const SizedBox(height: 8),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     GestureDetector(
                       onTap: () => Share.share('Révise "${deck.title}" sur KALAN ! 📚'),
-                      child: const Icon(Icons.share_rounded, size: 14, color: Color(0xFFAAAAAA)),
+                      child: const Icon(Icons.share_rounded, size: 15, color: Color(0xFFAAAAAA)),
                     ),
                     const SizedBox(width: 10),
                     GestureDetector(
                       onTap: () => _confirmDelete(context, deck),
-                      child: const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.redAccent),
+                      child: const Icon(Icons.delete_outline_rounded, size: 15, color: Colors.redAccent),
                     ),
                   ],
                 ),

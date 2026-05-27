@@ -12,12 +12,15 @@ import '../../services/connectivity_service.dart';
 import '../../ai/model_downloader.dart';
 import '../../data/repositories/deck_repository_impl.dart';
 import 'model_download_screen.dart';
+import 'offline_context_screen.dart';
 import '../blocs/user/user_bloc.dart';
 import '../blocs/user/user_event.dart';
 
 class GeneratingScreen extends StatefulWidget {
   final String ocrText;
-  const GeneratingScreen({super.key, required this.ocrText});
+  final String? userSubject;
+  final String? userContext;
+  const GeneratingScreen({super.key, required this.ocrText, this.userSubject, this.userContext});
 
   @override
   State<GeneratingScreen> createState() => _GeneratingScreenState();
@@ -59,6 +62,23 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
     await _loadSubjects();
     _isOffline = !await ConnectivityService().isOnline();
 
+    // Si hors ligne et qu'on n'a pas encore collecté le contexte → page contexte
+    if (_isOffline && widget.userContext == null) {
+      if (!mounted) return;
+      final detected = _detectSubject(widget.ocrText);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OfflineContextScreen(
+            ocrText: widget.ocrText,
+            detectedSubject: detected,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Hors ligne + contexte fourni : vérifier si Gemma est installé
     if (_isOffline && !await ModelDownloader.isModelDownloaded() && mounted) {
       final proceed = await _showOfflineModelDialog();
       if (!mounted) return;
@@ -191,6 +211,11 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
   }
 
   Future<void> _loadSubjects() async {
+    // Priorité au sujet sélectionné par l'utilisateur sur la page contexte
+    if (widget.userSubject != null) {
+      setState(() => _selectedSubject = widget.userSubject!);
+      return;
+    }
     final subjects = await DatabaseHelper.instance.getAllSubjects();
     if (mounted) {
       setState(() {
@@ -234,6 +259,8 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
 
       final result = await _aiService.generateFlashcards(
         text: cleanText,
+        userSubject: widget.userSubject,
+        userContext: widget.userContext,
       );
       if (mounted) {
         setState(() {

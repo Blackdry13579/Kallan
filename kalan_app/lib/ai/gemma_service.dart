@@ -33,7 +33,7 @@ class GemmaService {
     // et utiliser une température très basse (0.1) pour forcer un français correct et sans hallucination
     try {
       await _session?.close();
-      _session = await _model!.createSession(temperature: 0.1, topK: 1);
+      _session = await _model!.createSession(temperature: 0.35, topK: 10);
       
       await _session!.addQueryChunk(Message.text(text: prompt, isUser: true));
       final result = await _session!.getResponse();
