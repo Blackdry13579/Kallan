@@ -101,24 +101,7 @@ class HomeDashboard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(width: 12),
-          // Nom + sous-titre
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bonjour, ${profile['pseudo'] ?? 'Ami'} 👋',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Prêt pour ta quête de savoir ?',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF888888)),
-                ),
-              ],
-            ),
-          ),
+          const Spacer(),
           // Compteur XP
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
@@ -130,7 +113,8 @@ class HomeDashboard extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('🪙', style: TextStyle(fontSize: 14)),
+                Image.asset('assets/icons/bottom/etoile3d.png', height: 16,
+                  errorBuilder: (_, __, ___) => const Text('⭐', style: TextStyle(fontSize: 14))),
                 const SizedBox(width: 4),
                 Text(
                   NumberFormat('#,###').format(points).replaceAll(',', ' '),
@@ -283,7 +267,7 @@ class HomeDashboard extends StatelessWidget {
     };
   }
 
-  // ── GRILLE D'ACTIONS (3 blocs colorés) ──────────────────────────────────────
+  // ── GRILLE D'ACTIONS ────────────────────────────────────────────────────────
   Widget _buildActionGrid(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -291,27 +275,27 @@ class HomeDashboard extends StatelessWidget {
         children: [
           Expanded(
             child: _ActionCard(
-              title: 'Générer\nFlashcard',
-              iconAsset: 'add_3d.png',
-              gradientColors: const [Color(0xFF8B6FFF), Color(0xFF5A4FDD)],
+              title: 'Flashcard',
+              iconAsset: 'b.png',
+              gradientColors: const [Color(0xFF1565C0), Color(0xFF1E88E5)],
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateDeckScreen())),
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: _ActionCard(
-              title: 'Mon\nParcours',
-              iconAsset: 'library_3d.png',
-              gradientColors: const [Color(0xFF43C059), Color(0xFF2E7D32)],
+              title: 'Parcours',
+              iconAsset: 'parchemin.png',
+              gradientColors: const [Color(0xFF2E7D32), Color(0xFF43A047)],
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RoadmapScreen())),
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: _ActionCard(
-              title: 'Mes\nBadges',
-              iconAsset: 'leaderboard_3d.png',
-              gradientColors: const [Color(0xFFFFB340), Color(0xFFD4840A)],
+              title: 'Badges',
+              iconAsset: 'badge3d.png',
+              gradientColors: const [Color(0xFFB45309), Color(0xFFD97706)],
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BadgesScreen())),
             ),
           ),
@@ -340,15 +324,11 @@ class HomeDashboard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Trophée dans un cercle
-              Container(
-                width: 52, height: 52,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFE8C87A).withValues(alpha: 0.4), width: 1.5),
-                ),
-                child: const Center(child: Text('🏆', style: TextStyle(fontSize: 26))),
+              Image.asset(
+                'assets/icons/bottom/eper.png',
+                height: 72,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox(width: 72),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -363,7 +343,7 @@ class HomeDashboard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Lance un duel, gagne des XP ⚡',
+                      'Lance un duel,\ngagne des XP ⚡',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 11, fontWeight: FontWeight.w600),
@@ -517,7 +497,7 @@ class _ActionCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 108,
+        height: 120,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: gradientColors,
@@ -535,54 +515,51 @@ class _ActionCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Cercle décoratif de fond
-            Positioned(
-              top: -20, right: -20,
-              child: Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.09),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
+            // Filigrane — cercles décoratifs superposés
+            Positioned(top: -22, right: -22,
+              child: Container(width: 90, height: 90,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), shape: BoxShape.circle))),
+            Positioned(bottom: -18, left: -18,
+              child: Container(width: 68, height: 68,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), shape: BoxShape.circle))),
+            Positioned(top: 8, right: 28,
+              child: Container(width: 36, height: 36,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), shape: BoxShape.circle))),
+            Positioned(bottom: 18, right: -10,
+              child: Container(width: 48, height: 48,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), shape: BoxShape.circle))),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Icône 3D
+                  // Icône
                   Image.asset(
-                    'assets/icons/game/3d/$iconAsset',
-                    height: 54,
+                    'assets/icons/bottom/$iconAsset',
+                    height: 70,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.star_rounded, color: Colors.white, size: 40),
+                    errorBuilder: (_, __, ___) => const Icon(Icons.star_rounded, color: Colors.white, size: 52),
                   ),
-                  // Titre + bouton flèche
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            height: 1.2,
-                          ),
-                        ),
+                  // Titre dans un pill
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
+                    ),
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
                       ),
-                      Container(
-                        width: 24, height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.28),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 13),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),

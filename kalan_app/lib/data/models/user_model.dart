@@ -16,6 +16,7 @@ class UserModel {
   final int? avatarId;
   final DateTime? lastActive;
   final DateTime createdAt;
+  final String? pinHash;
 
   UserModel({
     this.id,
@@ -35,6 +36,7 @@ class UserModel {
     this.avatarId,
     this.lastActive,
     required this.createdAt,
+    this.pinHash,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) => UserModel(
@@ -55,6 +57,7 @@ class UserModel {
         avatarId: map['avatar_id'],
         lastActive: map['last_active'] != null ? DateTime.tryParse(map['last_active']) : null,
         createdAt: DateTime.parse(map['created_at']),
+        pinHash: map['pin_hash'],
       );
 
   Map<String, dynamic> toMap() => {
@@ -69,6 +72,7 @@ class UserModel {
         'avatar_id': avatarId,
         'last_active': lastActive?.toIso8601String(),
         'created_at': createdAt.toIso8601String(),
+        'pin_hash': pinHash,
       };
 
   Map<String, dynamic> toSupabaseJson() => {
@@ -82,5 +86,6 @@ class UserModel {
         'avatar_url': avatarId != null ? 'assets/avatars/avatar$avatarId.png' : null,
         'last_active': lastActive?.toIso8601String(),
         'created_at': createdAt.toIso8601String(),
+        'pin_hash': pinHash,
       };
 }

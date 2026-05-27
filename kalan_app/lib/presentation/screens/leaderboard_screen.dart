@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/leaderboard/leaderboard_bloc.dart';
 import '../blocs/leaderboard/leaderboard_event.dart';
 import '../blocs/leaderboard/leaderboard_state.dart';
+import '../../core/utils/level_utils.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../services/connectivity_service.dart';
 import 'roadmap_screen.dart';
@@ -91,16 +92,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       final topThree = state.entries.take(3).toList();
                       final remaining = state.entries.skip(3).take(7).toList();
 
-                      final currentUserId = SupabaseService.currentUser?.id;
-                      final userIndex = state.entries.indexWhere((e) => e.userId == currentUserId);
-                      final hasMyEntry = userIndex != -1;
-                      final myEntry = hasMyEntry ? state.entries[userIndex] : null;
-                      final myRank = hasMyEntry ? userIndex + 1 : null;
-
-                      final tickerMessage = myRank != null
-                          ? 'Félicitations ! Tu es au $myRank${myRank == 1 ? 'er' : 'ème'} rang mondial avec ${myEntry!.points} XP • Continue de progresser ! 🚀'
-                          : 'Continue de progresser pour faire partie du classement et gagner plus d\'XP ! 🚀';
-
                       return RefreshIndicator(
                         onRefresh: _checkConnectionAndRefresh,
                         child: SingleChildScrollView(
@@ -109,9 +100,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                             children: [
                               _buildTabs(),
                               _buildTopThree(topThree),
-                              const SizedBox(height: 10),
-                              MarqueeTicker(text: tickerMessage),
-                              const SizedBox(height: 15),
+                              const SizedBox(height: 14),
                               _buildCompactList(remaining),
                               const SizedBox(height: 100),
                             ],
@@ -262,8 +251,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       child: Row(
         children: [
           _tabItem('Semaine', 'weekly'),
-          _tabItem('Mois', 'monthly'),
           _tabItem('National', 'national'),
+          _tabItem('Amis', 'friends'),
         ],
       ),
     );
@@ -279,7 +268,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(color: active ? const Color(0xFF2D5C14) : Colors.transparent, borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(color: active ? const Color(0xFFD97706) : Colors.transparent, borderRadius: BorderRadius.circular(10)),
           child: Center(
             child: Text(
               label,
@@ -292,26 +281,68 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 
   Widget _buildTopThree(List<dynamic> topThree) {
+    // estrade.png : 1649 × 954 px → ratio W/H ≈ 1.73
+    const double kRatio = 1.73;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (topThree.length >= 2) _podiumUser(topThree[1], 2, 60),
-          const SizedBox(width: 12),
-          if (topThree.isNotEmpty) _podiumUser(topThree[0], 1, 80, isFirst: true),
-          const SizedBox(width: 12),
-          if (topThree.length >= 3) _podiumUser(topThree[2], 3, 60),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: LayoutBuilder(
+        builder: (_, constraints) {
+          final w = constraints.maxWidth;
+          final imgH = w / kRatio;      // hauteur rendue de l'image
+          final totalH = imgH + 120.0;  // espace pour les avatars au-dessus
+
+          return SizedBox(
+            height: totalH,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Image de l'estrade en bas
+                Positioned(
+                  bottom: 0, left: 0, right: 0,
+                  child: Image.asset(
+                    'assets/icons/bottom/estrade.png',
+                    fit: BoxFit.fitWidth,
+                    errorBuilder: (_, __, ___) => SizedBox(height: imgH),
+                  ),
+                ),
+                // 2e place — marche gauche
+                if (topThree.length >= 2)
+                  Positioned(
+                    bottom: imgH * 0.70,
+                    left: 0,
+                    width: w * 0.33,
+                    child: Center(child: _podiumUser(topThree[1], 2, 52)),
+                  ),
+                // 1re place — marche centrale (la plus haute)
+                if (topThree.isNotEmpty)
+                  Positioned(
+                    bottom: imgH * 0.80,
+                    left: w * 0.33,
+                    width: w * 0.34,
+                    child: Center(child: _podiumUser(topThree[0], 1, 66, isFirst: true)),
+                  ),
+                // 3e place — marche droite
+                if (topThree.length >= 3)
+                  Positioned(
+                    bottom: imgH * 0.58,
+                    left: w * 0.67,
+                    width: w * 0.33,
+                    child: Center(child: _podiumUser(topThree[2], 3, 52)),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _podiumUser(dynamic entry, int rank, double size, {bool isFirst = false}) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (isFirst) const Text('👑', style: TextStyle(fontSize: 22)),
+        if (isFirst) const Text('👑', style: TextStyle(fontSize: 20)),
         Container(
           width: size,
           height: size,
@@ -324,25 +355,16 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           ),
           child: ClipOval(child: Image(image: _getAvatarImage(entry.avatar), fit: BoxFit.cover)),
         ),
-        const SizedBox(height: 6),
-        Text(entry.pseudo, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
-        Text('${entry.points} XP', style: const TextStyle(color: Color(0xFF5A8A20), fontWeight: FontWeight.w700, fontSize: 11)),
         const SizedBox(height: 4),
-        Container(
-          height: isFirst ? 60 : (rank == 2 ? 45 : 35),
-          width: 70,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: rank == 1 
-                ? [const Color(0xFFF5C842), const Color(0xFFE8A820)]
-                : (rank == 2 ? [const Color(0xFFD0D0D0), const Color(0xFFB0B0B0)] : [const Color(0xFFCD9060), const Color(0xFFA06040)]),
-            ),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-          ),
-          child: Center(child: Text('$rank', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20))),
+        Text(
+          entry.pseudo,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
         ),
+        Text('${entry.points} XP',
+          style: const TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.w700, fontSize: 10)),
       ],
     );
   }
@@ -383,27 +405,36 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
                 return Container(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
-                  color: isMe ? const Color(0xFFEDF5E0) : Colors.transparent,
+                  color: isMe ? const Color(0xFFFEF3C7) : Colors.transparent,
                   child: Row(
                     children: [
                       SizedBox(
                         width: 30,
-                        child: Text('$rank', style: TextStyle(fontWeight: FontWeight.w800, color: isMe ? const Color(0xFF2D5C14) : Colors.grey, fontSize: 13)),
+                        child: Text('$rank', style: TextStyle(fontWeight: FontWeight.w800, color: isMe ? const Color(0xFFD97706) : Colors.grey, fontSize: 13)),
                       ),
                       Container(
-                        width: 26,
-                        height: 26,
+                        width: 30,
+                        height: 30,
                         margin: const EdgeInsets.only(right: 12),
-                        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isMe ? const Color(0xFF2D5C14) : Colors.transparent, width: 1)),
+                        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isMe ? const Color(0xFFD97706) : Colors.transparent, width: 1.5)),
                         child: ClipOval(child: Image(image: _getAvatarImage(entry.avatar), fit: BoxFit.cover)),
                       ),
                       Expanded(
-                        child: Text(
-                          entry.pseudo + (isMe ? ' (Toi)' : ''),
-                          style: TextStyle(fontWeight: FontWeight.w700, color: isMe ? const Color(0xFF2D5C14) : const Color(0xFF2A1A08), fontSize: 13),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              entry.pseudo + (isMe ? ' (Toi)' : ''),
+                              style: TextStyle(fontWeight: FontWeight.w700, color: isMe ? const Color(0xFFD97706) : const Color(0xFF2A1A08), fontSize: 13),
+                            ),
+                            Text(
+                              'Niv. ${LevelUtils.getLevelInfo(entry.points).level}',
+                              style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500),
+                            ),
+                          ],
                         ),
                       ),
-                      Text('${entry.points} XP', style: TextStyle(fontWeight: FontWeight.w800, color: isMe ? const Color(0xFF2D5C14) : const Color(0xFF5A8A20), fontSize: 12)),
+                      Text('${entry.points} XP', style: TextStyle(fontWeight: FontWeight.w800, color: isMe ? const Color(0xFFD97706) : const Color(0xFFB45309), fontSize: 12)),
                     ],
                   ),
                 );

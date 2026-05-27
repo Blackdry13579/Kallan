@@ -19,7 +19,7 @@ class DatabaseHelper {
     final path = join(dbPath, filePath);
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -48,6 +48,11 @@ class DatabaseHelper {
       } catch (_) {}
       try {
         await db.execute('ALTER TABLE flashcards ADD COLUMN repetitions INTEGER DEFAULT 0');
+      } catch (_) {}
+    }
+    if (oldVersion < 6) {
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN pin_hash TEXT');
       } catch (_) {}
     }
     if (oldVersion < 5) {
@@ -87,7 +92,8 @@ class DatabaseHelper {
         sync_status TEXT DEFAULT 'synced',
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         last_active DATE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        pin_hash TEXT
       )
     ''');
 

@@ -1,6 +1,11 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../../ai/model_downloader.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/ocr_service.dart';
 import '../../services/presence_service.dart';
@@ -33,11 +38,12 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  void changeTab(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
+  // ── Téléchargement IA offline ──────────────────────────────────────
+  double? _aiDownloadProgress;   // null = pas de DL, 0..1 = en cours, -1 = erreur
+  StreamSubscription<double>? _aiDownloadSub;
+
+  void changeTab(int index) => setState(() => _currentIndex = index);
+
   final OCRService _ocrService = OCRService();
 
   @override
@@ -46,12 +52,183 @@ class HomeScreenState extends State<HomeScreen> {
     context.read<UserBloc>().add(LoadUserProfile());
     context.read<BadgeBloc>().add(CheckNewBadges());
     PresenceService.startHeartbeat();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkOfflineAI());
   }
 
   @override
   void dispose() {
+    _aiDownloadSub?.cancel();
     _ocrService.dispose();
     super.dispose();
+  }
+
+  // ── Vérification au démarrage ──────────────────────────────────────
+  Future<void> _checkOfflineAI() async {
+    final isInstalled = await ModelDownloader.isModelDownloaded();
+    if (isInstalled || !mounted) return;
+    _showOfflineAIDialog();
+  }
+
+  void _showOfflineAIDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFFF5F2EA),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🤖', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 16),
+            const Text(
+              'IA hors-ligne non installée',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Pour générer des flashcards sans connexion internet, installe le modèle IA (~750 Mo) sur ton téléphone.\n\nLe téléchargement se fera en arrière-plan — tu pourras continuer à utiliser KALAN normalement.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.55),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity, height: 50,
+              child: ElevatedButton(
+                onPressed: () { Navigator.pop(ctx); _startBackgroundDownload(); },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D6A2D),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'J\'accepte — Télécharger',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Plus tard', style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Téléchargement en arrière-plan ─────────────────────────────────
+  void _startBackgroundDownload() {
+    setState(() => _aiDownloadProgress = 0.0);
+    _aiDownloadSub?.cancel();
+    _aiDownloadSub = ModelDownloader.downloadModel().listen(
+      (progress) {
+        if (!mounted) return;
+        if (progress < 0) {
+          // Erreur
+          setState(() => _aiDownloadProgress = -1.0);
+          _aiDownloadSub?.cancel();
+          return;
+        }
+        setState(() => _aiDownloadProgress = progress);
+        if (progress >= 1.0) {
+          // Succès
+          _aiDownloadSub?.cancel();
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) setState(() => _aiDownloadProgress = null);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ IA hors-ligne installée avec succès !'),
+              backgroundColor: Color(0xFF2D6A2D),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      },
+      onError: (_) {
+        if (mounted) setState(() => _aiDownloadProgress = -1.0);
+      },
+    );
+  }
+
+  // ── Bannière de progression ────────────────────────────────────────
+  Widget _buildDownloadBanner() {
+    final progress = _aiDownloadProgress;
+    if (progress == null) return const SizedBox.shrink();
+
+    final bool isError = progress < 0;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isError ? Colors.red.shade50 : const Color(0xFFEAF3DE),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isError ? Colors.red.shade200 : const Color(0xFF4CAF50).withValues(alpha: 0.3),
+        ),
+      ),
+      child: isError
+          ? Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Échec du téléchargement',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _startBackgroundDownload,
+                  child: const Text('Réessayer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF2D6A2D))),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => setState(() => _aiDownloadProgress = null),
+                  child: const Icon(Icons.close_rounded, size: 16, color: Colors.red),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('🤖', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Téléchargement IA hors-ligne...',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2D6A2D)),
+                      ),
+                    ),
+                    Text(
+                      progress >= 1.0 ? '✅' : '${(progress * 100).toInt()}%',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF2D6A2D)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 5,
+                    backgroundColor: const Color(0xFFD0E8C4),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2D6A2D)),
+                  ),
+                ),
+              ],
+            ),
+    );
   }
 
   final List<Widget> _screens = [
@@ -73,107 +250,72 @@ class HomeScreenState extends State<HomeScreen> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
+        body: Column(
+          children: [
+            Expanded(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _screens,
+              ),
+            ),
+            _buildDownloadBanner(),
+          ],
         ),
         bottomNavigationBar: SafeArea(
-          child: SizedBox(
-            height: 70,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: 70,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = MediaQuery.of(context).size.width;
-                      final itemWidth = width / 5;
-                      double notchCenterX;
-                      if (_currentIndex < 2) {
-                        notchCenterX = itemWidth * _currentIndex + itemWidth / 2;
-                      } else if (_currentIndex > 2) {
-                        notchCenterX = itemWidth * _currentIndex + itemWidth / 2;
-                      } else {
-                        notchCenterX = width / 2;
-                      }
-                      return TweenAnimationBuilder<double>(
-                        tween: Tween<double>(end: notchCenterX),
-                        duration: const Duration(milliseconds: 350),
-                        curve: Curves.easeInOutCubic,
-                        builder: (context, animatedX, child) {
-                          return CustomPaint(
-                            size: Size(width, 70),
-                            painter: _SlidingNotchPainter(
-                              notchCenterX: animatedX,
-                              backgroundColor: Colors.white,
-                            ),
-                          );
-                        },
-                      );
-                    },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            child: Container(
+              height: 58,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.10),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: 70,
-                  child: BlocBuilder<UserBloc, UserState>(
-                    builder: (context, state) {
-                      return Row(
-                        children: [
-                          _buildNavTab(0, Icons.home_rounded, 'Accueil'),
-                          _buildNavTab(1, Icons.menu_book_rounded, 'Librairie'),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => _showCreateOptions(context),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 300),
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      shape: BoxShape.circle,
-                                      gradient: RadialGradient(
-                                        colors: [
-                                          Colors.white.withValues(alpha: 0.3),
-                                          AppColors.primary,
-                                        ],
-                                        radius: 0.5,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppColors.primary.withValues(alpha: 0.35),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.add_rounded,
-                                      color: Colors.white,
-                                      size: 30,
-                                    ),
+                ],
+              ),
+              child: BlocBuilder<UserBloc, UserState>(
+                builder: (context, state) {
+                  return Row(
+                    children: [
+                      _buildNavTab(0, 'assets/icons/bottom/home.png', 'Accueil'),
+                      _buildNavTab(1, 'assets/icons/bottom/librairie.png', 'Librairie'),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _showCreateOptions(context),
+                          child: Center(
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
+                              child: Image.asset(
+                                'assets/icons/bottom/+.png',
+                                height: 22,
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ),
-                          _buildNavTab(3, Icons.emoji_events_rounded, 'Niveau'),
-                          _buildProfileNavTab(4, state),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
+                        ),
+                      ),
+                      _buildNavTab(3, 'assets/icons/bottom/classement.png', 'Niveau'),
+                      _buildProfileNavTab(4, state),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -182,124 +324,155 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   void _showCreateOptions(BuildContext context) {
-    showGeneralDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Create',
-      barrierColor: Colors.black.withValues(alpha: 0.4),
-      transitionDuration: const Duration(milliseconds: 600),
-      pageBuilder: (context, anim1, anim2) => Align(
-        alignment: Alignment.bottomCenter,
-        child: Container(
-          padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const Text(
-                  'Créer une nouvelle fiche',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 24),
-                _createOptionItem(
-                  icon: Icons.camera_alt_rounded,
-                  color: const Color(0xFF2D6A2D),
-                  title: 'Scanner un cours',
-                  subtitle: 'Prendre une photo de tes notes',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CameraOCRScreen()));
-                  },
-                ),
-                const SizedBox(height: 16),
-                _createOptionItem(
-                  icon: Icons.picture_as_pdf_rounded,
-                  color: const Color(0xFFE24B4A),
-                  title: 'Importer un PDF',
-                  subtitle: 'Générer depuis un document',
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await _pickAndProcessPDF();
-                  },
-                ),
-                const SizedBox(height: 16),
-                _createOptionItem(
-                  icon: Icons.photo_library_rounded,
-                  color: const Color(0xFF185FA5),
-                  title: 'Importer une image',
-                  subtitle: 'Depuis ta galerie photos',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CameraOCRScreen()));
-                  },
-                ),
-              ],
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 24, right: 24, top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
+            const Text(
+              'Créer une nouvelle fiche',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+            const SizedBox(height: 24),
+            _createOptionItem(
+              icon: Icons.camera_alt_rounded,
+              color: const Color(0xFF2D6A2D),
+              title: 'Scanner un cours',
+              subtitle: 'Prendre une photo de tes notes',
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const CameraOCRScreen()));
+              },
+            ),
+            const SizedBox(height: 12),
+            _createOptionItem(
+              icon: Icons.picture_as_pdf_rounded,
+              color: const Color(0xFFE24B4A),
+              title: 'Importer un PDF',
+              subtitle: 'Générer depuis un document',
+              onTap: () async {
+                Navigator.pop(ctx);
+                await _pickAndProcessPDF();
+              },
+            ),
+            const SizedBox(height: 12),
+            _createOptionItem(
+              icon: Icons.photo_library_rounded,
+              color: const Color(0xFF185FA5),
+              title: 'Importer une image',
+              subtitle: 'Depuis ta galerie photos',
+              onTap: () async {
+                Navigator.pop(ctx);
+                await _pickAndProcessImage();
+              },
+            ),
+          ],
         ),
       ),
-      transitionBuilder: (context, anim1, anim2, child) {
-        final curvedAnim = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
-        return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(curvedAnim),
-          child: child,
-        );
-      },
     );
   }
 
   Future<void> _pickAndProcessPDF() async {
+    bool dialogShown = false;
     try {
       final FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
       );
+      if (result == null || result.files.single.path == null) return;
+      if (!mounted) return;
 
-      if (result != null && result.files.single.path != null) {
-        if (!mounted) return;
-        
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator()),
+      dialogShown = true;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Syncfusion extrait le texte directement depuis le PDF (pas de MLKit)
+      final bytes = await File(result.files.single.path!).readAsBytes();
+      final doc = PdfDocument(inputBytes: bytes);
+      final text = PdfTextExtractor(doc).extractText();
+      doc.dispose();
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      dialogShown = false;
+
+      if (text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Aucun texte trouvé dans ce PDF (PDF scanné non supporté)')),
         );
-
-        final text = await _ocrService.extractTextFromPDF(result.files.single.path!);
-        
-        if (!mounted) return;
-        Navigator.pop(context); // Close loading dialog
-
-        if (text.trim().isEmpty || text.contains('Erreur')) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Impossible d\'extraire le texte du PDF')),
-          );
-          return;
-        }
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => GeneratingScreen(ocrText: text),
-          ),
-        );
+        return;
       }
+
+      Navigator.push(context, MaterialPageRoute(builder: (_) => GeneratingScreen(ocrText: text)));
     } catch (e) {
       if (mounted) {
+        if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de l\'import : $e')),
+          SnackBar(content: Text('Erreur import PDF : $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickAndProcessImage() async {
+    bool dialogShown = false;
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image == null) return;
+      if (!mounted) return;
+
+      dialogShown = true;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final text = await _ocrService.extractText(image.path);
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      dialogShown = false;
+
+      if (text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Aucun texte détecté dans cette image')),
+        );
+        return;
+      }
+
+      Navigator.push(context, MaterialPageRoute(builder: (_) => GeneratingScreen(ocrText: text)));
+    } catch (e) {
+      if (mounted) {
+        if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur import image : $e')),
         );
       }
     }
@@ -358,123 +531,71 @@ class HomeScreenState extends State<HomeScreen> {
       child: GestureDetector(
         onTap: () => setState(() => _currentIndex = index),
         behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          height: 70,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeInOutCubic,
-                transform: Matrix4.translationValues(0, isSelected ? -14 : 0, 0),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: isSelected ? 44 : 32,
-                  height: isSelected ? 44 : 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: isSelected
-                        ? Border.all(color: AppColors.primary, width: 2)
-                        : Border.all(color: Colors.grey.shade300, width: 1.5),
-                    boxShadow: isSelected
-                        ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 3))]
-                        : null,
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      avatarId != null
-                          ? 'assets/avatars/avatar$avatarId.png'
-                          : 'assets/avatars/avatar1.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
-                        Icons.person_rounded,
-                        color: isSelected ? AppColors.primary : Colors.grey.shade500,
-                        size: isSelected ? 24 : 20,
-                      ),
-                    ),
-                  ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: isSelected ? 30 : 26,
+              height: isSelected ? 30 : 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                  width: isSelected ? 2 : 1.5,
                 ),
               ),
-              const SizedBox(height: 2),
-              AnimatedOpacity(
-                opacity: isSelected ? 0.0 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                child: Text(
-                  'Profil',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 10, fontWeight: FontWeight.w500),
+              child: ClipOval(
+                child: Image.asset(
+                  avatarId != null ? 'assets/avatars/avatar$avatarId.png' : 'assets/avatars/avatar1.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Icon(Icons.person_rounded,
+                    color: isSelected ? AppColors.primary : Colors.grey.shade500, size: 16),
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 3),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: isSelected ? 5 : 0,
+              height: isSelected ? 5 : 0,
+              decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildNavTab(int index, IconData icon, String label) {
+  Widget _buildNavTab(int index, String imagePath, String label) {
     final isSelected = _currentIndex == index;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _currentIndex = index),
         behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          height: 70,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icône qui monte quand sélectionnée
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeInOutCubic,
-                transform: Matrix4.translationValues(
-                  0,
-                  isSelected ? -14 : 0,
-                  0,
-                ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: isSelected ? 44 : 32,
-                  height: isSelected ? 44 : 32,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primary.withValues(alpha: 0.15)
-                        : Colors.transparent,
-                    shape: BoxShape.circle,
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.2),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Center(
-                    child: Icon(
-                      icon,
-                      color: isSelected ? AppColors.primary : Colors.grey.shade500,
-                      size: isSelected ? 24 : 22,
-                    ),
-                  ),
-                ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedOpacity(
+              opacity: isSelected ? 1.0 : 0.40,
+              duration: const Duration(milliseconds: 200),
+              child: Image.asset(
+                imagePath,
+                height: isSelected ? 26 : 22,
+                fit: BoxFit.contain,
               ),
-              const SizedBox(height: 2),
-              // Label qui disparaît quand actif
-              AnimatedOpacity(
-                opacity: isSelected ? 0.0 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+            ),
+            const SizedBox(height: 3),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: isSelected ? 5 : 0,
+              height: isSelected ? 5 : 0,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

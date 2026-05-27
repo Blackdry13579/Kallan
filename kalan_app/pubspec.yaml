@@ -42,6 +42,7 @@ dependencies:
   syncfusion_flutter_pdf: ^28.1.33
   flutter_dotenv: ^6.0.1
   audioplayers: ^6.6.0
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
@@ -64,3 +65,4 @@ flutter:
     - assets/audio/
     - assets/icons/
     - assets/icons/badges_niveau/
+    - assets/icons/bottom/

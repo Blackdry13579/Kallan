@@ -66,17 +66,17 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F2EA),
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF2D6A2D)),
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
             'Parcours d\'Apprentissage',
             style: GoogleFonts.plusJakartaSans(
-              color: const Color(0xFF1A1A1A),
+              color: Colors.white,
               fontWeight: FontWeight.w900,
               fontSize: 20,
             ),
@@ -100,7 +100,7 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
 
               return Column(
                 children: [
-                  _buildHeaderProgress(points, levelInfo),
+                  _buildHeaderProgress(points, levelInfo, levelInfo.level),
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
@@ -204,11 +204,26 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
     );
   }
 
-  Widget _buildHeaderProgress(int points, LevelInfo levelInfo) {
+  String _levelBgImage(int level) => switch (level) {
+    2 => 'level-2-baobab.jpg',
+    3 => 'level-3-feu.jpg',
+    4 => 'level-4-griot.jpg',
+    5 => 'level-5-masque.jpg',
+    6 => 'level-6-ancetre.jpg',
+    _ => 'level-1-graine.jpg',
+  };
+
+  Widget _buildHeaderProgress(int points, LevelInfo levelInfo, int level) {
     final double progress = (points / levelInfo.nextLevelPoints).clamp(0.0, 1.0);
 
     return Container(
-      color: Colors.white,
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/roadmap/${_levelBgImage(level)}'),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.50), BlendMode.darken),
+        ),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         children: [
@@ -218,13 +233,14 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                  color: Colors.white.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
                 ),
                 child: Center(
                   child: Hero(
                     tag: 'mascot_roadmap',
-                    child: Image.asset('assets/images/Bonome.png', height: 38, errorBuilder: (_,__,___) => const Icon(Icons.school, color: Color(0xFF2D6A2D))),
+                    child: Image.asset('assets/images/Bonome.png', height: 38, errorBuilder: (_,__,___) => const Icon(Icons.school, color: Colors.white)),
                   ),
                 ),
               ),
@@ -235,23 +251,27 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
                   children: [
                     Text(
                       'Progression Actuelle',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w800),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w800),
                     ),
                     Row(
                       children: [
-                        Text(
-                          levelInfo.title.toUpperCase(),
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
+                        Flexible(
+                          child: Text(
+                            levelInfo.title.toUpperCase(),
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                          ),
                         ),
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50),
+                            color: Colors.white.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1),
                           ),
                           child: Text(
-                            'Niveau ${levelInfo.level}',
+                            'Niveau $level',
                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
                           ),
                         ),
@@ -262,7 +282,7 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
               ),
               Text(
                 '$points XP',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF2D6A2D)),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
               ),
             ],
           ),
@@ -272,8 +292,8 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              backgroundColor: const Color(0xFFE8E4DA),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+              backgroundColor: Colors.white.withValues(alpha: 0.25),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF76D572)),
             ),
           ),
         ],

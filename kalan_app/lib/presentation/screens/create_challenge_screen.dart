@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../services/battle_service.dart';
 import '../blocs/user/user_bloc.dart';
@@ -97,7 +98,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
     if (lastActiveStr == null) return false;
     try {
       final lastActive = DateTime.parse(lastActiveStr);
-      return DateTime.now().difference(lastActive).inMinutes < 5;
+      return DateTime.now().difference(lastActive).inMinutes < 10;
     } catch (e) { return false; }
   }
 
@@ -458,7 +459,12 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final inviterId = SupabaseService.currentUser!.id;
+      final prefs = await SharedPreferences.getInstance();
+      final inviterId = SupabaseService.currentUser?.id ?? prefs.getString('current_user_uuid') ?? '';
+      if (inviterId.isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Impossible d\'identifier ton compte. Reconnecte-toi.')));
+        return;
+      }
       final battleService = BattleService();
 
       final battle = await battleService.createBattle(
