@@ -10,7 +10,7 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
     on<SubmitQuiz>((event, emit) async {
       emit(QuizSubmitting());
       try {
-        await _repository.saveQuizResult(event.deckId, event.score, event.total, event.duration);
+        await _repository.saveQuizResult(event.deckId, event.score, event.total, event.duration, event.xpGained);
         // Les points sont déjà crédités question par question pendant le quiz.
         emit(const QuizSubmitted(true));
       } catch (e) {

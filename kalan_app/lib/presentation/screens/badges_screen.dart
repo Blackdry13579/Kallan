@@ -65,9 +65,9 @@ class _BadgesScreenState extends State<BadgesScreen> with SingleTickerProviderSt
 
           if (state is BadgeLoaded) {
             final unlockedKeys = state.unlockedBadges.map((b) => b.badgeKey).toSet();
-            
+
             // Sort: earned first, then locked
-            final sortedBadges = List<Map<String, dynamic>>.from(state.allBadges)
+            final allSorted = List<Map<String, dynamic>>.from(state.allBadges)
               ..sort((a, b) {
                 bool aUnlocked = unlockedKeys.contains(a['id']);
                 bool bUnlocked = unlockedKeys.contains(b['id']);
@@ -76,6 +76,13 @@ class _BadgesScreenState extends State<BadgesScreen> with SingleTickerProviderSt
                 return 0;
               });
 
+            // Filter based on active tab: 0=Tous, 1=Obtenus, 2=À débloquer
+            final filteredBadges = switch (_tabController.index) {
+              1 => allSorted.where((b) => unlockedKeys.contains(b['id'])).toList(),
+              2 => allSorted.where((b) => !unlockedKeys.contains(b['id'])).toList(),
+              _ => allSorted,
+            };
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -83,9 +90,9 @@ class _BadgesScreenState extends State<BadgesScreen> with SingleTickerProviderSt
                 _buildTabs(),
                 const SizedBox(height: 12),
                 Expanded(
-                  child: sortedBadges.isEmpty
+                  child: filteredBadges.isEmpty
                       ? _buildEmptyState()
-                      : _buildBadgesGrid(sortedBadges, unlockedKeys),
+                      : _buildBadgesGrid(filteredBadges, unlockedKeys),
                 ),
               ],
             );

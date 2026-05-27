@@ -1,4 +1,6 @@
-# Flutter/Dart
+# ═══════════════════════════════════════════════════
+# Flutter / Dart
+# ═══════════════════════════════════════════════════
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -9,7 +11,9 @@ build/
 *.g.dart
 *.freezed.dart
 
+# ═══════════════════════════════════════════════════
 # Android
+# ═══════════════════════════════════════════════════
 android/.gradle/
 android/app/debug/
 android/app/profile/
@@ -19,41 +23,86 @@ android/local.properties
 *.jks
 *.keystore
 
+# ═══════════════════════════════════════════════════
 # iOS
+# ═══════════════════════════════════════════════════
 ios/Pods/
 ios/.symlinks/
 ios/Flutter/Flutter.framework/
 ios/Flutter/Flutter.podspec
 
-# Secrets
+# ═══════════════════════════════════════════════════
+# Secrets et clés
+# ═══════════════════════════════════════════════════
 .env
+.env.test
+.env.local
 *.env
+!.env.example
 lib/data/remote/supabase_credentials.dart
 lib/core/constants/api_keys.dart
 
-# Assets lourds (optionnels, à discuter)
-# assets/images/
-# assets/avatars/
-# assets/badges/
+# ═══════════════════════════════════════════════════
+# IA / Agents (Claude, Gemini, Copilot, Cursor)
+# ═══════════════════════════════════════════════════
+.gemini/
+.anthropic/
+.claude/
+.copilot/
+.cursor/
+.brain/
+brain/
+scratch/
 
+# ═══════════════════════════════════════════════════
+# Modèles IA lourds
+# ═══════════════════════════════════════════════════
+assets/models/
+*.gguf
+*.bin
+*.safetensors
+*.onnx
+*.tflite
+*.task
+
+# ═══════════════════════════════════════════════════
+# Analyse et logs
+# ═══════════════════════════════════════════════════
+analyze*.txt
+*.log
+
+# ═══════════════════════════════════════════════════
+# Archives et fichiers lourds
+# ═══════════════════════════════════════════════════
+*.zip
+*.tar.gz
+*.rar
+*.7z
+commandlinetools.zip
+
+# ═══════════════════════════════════════════════════
 # IDE
+# ═══════════════════════════════════════════════════
 .idea/
 .vscode/
 *.iml
 *.ipr
 *.iws
 
+# ═══════════════════════════════════════════════════
 # OS
+# ═══════════════════════════════════════════════════
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Node
+# ═══════════════════════════════════════════════════
+# Node (si présent)
+# ═══════════════════════════════════════════════════
 node_modules/
 package-lock.json
-package.json
 
+# ═══════════════════════════════════════════════════
 # SQL
+# ═══════════════════════════════════════════════════
 *.sql
-
-# Logs
-*.log

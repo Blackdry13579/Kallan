@@ -521,9 +521,11 @@ class DatabaseHelper {
     final db = await instance.database;
     // Returns recent decks with their card count
     return await db.rawQuery('''
-      SELECT d.*, 
+      SELECT d.*,
              (SELECT COUNT(*) FROM flashcards WHERE deck_id = d.uuid) as cardCount,
-             (SELECT score FROM quiz_results WHERE deck_id = d.uuid ORDER BY created_at DESC LIMIT 1) as lastScore
+             (SELECT score FROM quiz_results WHERE deck_id = d.uuid ORDER BY created_at DESC LIMIT 1) as lastScore,
+             (SELECT CASE WHEN (qr.score * 15 - qr.total * 5) > 0 THEN (qr.score * 15 - qr.total * 5) ELSE 0 END
+              FROM quiz_results qr WHERE qr.deck_id = d.uuid ORDER BY qr.created_at DESC LIMIT 1) as xp_gained
       FROM decks d
       WHERE d.user_id = ?
       ORDER BY d.created_at DESC
@@ -562,7 +564,7 @@ class DatabaseHelper {
           'user_id': userId,
           'type': 'review',
           'title': 'Bienvenue sur KALAN ! 🎉',
-          'message': 'Commence par importer un cours en PDF ou photo pour générer tes premières fiches.',
+          'message': 'Commence par scanner un cours ou importer une photo pour générer tes premières fiches.',
           'is_read': 0,
           'created_at': now.subtract(const Duration(minutes: 5)).toIso8601String(),
         },

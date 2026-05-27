@@ -1,6 +1,8 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/ocr_service.dart';
 import '../../services/presence_service.dart';
 import '../blocs/user/user_bloc.dart';
 import '../blocs/user/user_event.dart';
@@ -16,18 +18,27 @@ import 'leaderboard_screen.dart';
 import 'create_deck_screen.dart';
 import 'camera_ocr_screen.dart';
 import 'generating_screen.dart';
-import '../../services/pdf_service.dart';
-import 'package:file_picker/file_picker.dart' as fp;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  HomeScreenState createState() => HomeScreenState();
+
+  static HomeScreenState? of(BuildContext context) {
+    return context.findAncestorStateOfType<HomeScreenState>();
+  }
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+
+  void changeTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+  final OCRService _ocrService = OCRService();
 
   @override
   void initState() {
@@ -39,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    PresenceService.stopHeartbeat();
+    _ocrService.dispose();
     super.dispose();
   }
 
@@ -72,7 +83,6 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // Le fond avec notch animé qui suit l'onglet sélectionné
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -107,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                 ),
-                // Les 5 icônes de navigation
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -119,7 +128,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           _buildNavTab(0, Icons.home_rounded, 'Accueil'),
                           _buildNavTab(1, Icons.menu_book_rounded, 'Librairie'),
-                          // Bouton central "+"
                           Expanded(
                             child: GestureDetector(
                               onTap: () => _showCreateOptions(context),
@@ -159,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           _buildNavTab(3, Icons.emoji_events_rounded, 'Niveau'),
-                          _buildNavTab(4, Icons.person_rounded, 'Profil'),
+                          _buildProfileNavTab(4, state),
                         ],
                       );
                     },
@@ -174,126 +182,127 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showCreateOptions(BuildContext context) {
-    showModalBottomSheet(
+    showGeneralDialog(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: 24,
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+      barrierDismissible: true,
+      barrierLabel: 'Create',
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      transitionDuration: const Duration(milliseconds: 600),
+      pageBuilder: (context, anim1, anim2) => Align(
+        alignment: Alignment.bottomCenter,
+        child: Container(
+          padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const Text(
-                'Créer une nouvelle fiche',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 24),
-              _createOptionItem(
-                icon: Icons.camera_alt_rounded,
-                color: const Color(0xFF2D6A2D),
-                title: 'Scanner un cours',
-                subtitle: 'Prendre une photo de tes notes',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CameraOCRScreen()));
-                },
-              ),
-              const SizedBox(height: 16),
-              _createOptionItem(
-                icon: Icons.photo_library_rounded,
-                color: const Color(0xFF185FA5),
-                title: 'Importer une image',
-                subtitle: 'Depuis ta galerie photos',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CameraOCRScreen()));
-                },
-              ),
-              const SizedBox(height: 16),
-              _createOptionItem(
-                icon: Icons.picture_as_pdf_rounded,
-                color: const Color(0xFFE24B4A),
-                title: 'Importer un PDF',
-                subtitle: 'Fichier PDF (max 10 pages)',
-                onTap: () async {
-                  final parentNavigator = Navigator.of(this.context);
-                  final parentScaffold = ScaffoldMessenger.of(this.context);
-                  Navigator.pop(context);
-
-                  try {
-                    fp.FilePickerResult? result = await fp.FilePicker.pickFiles(
-                      type: fp.FileType.custom,
-                      allowedExtensions: ['pdf'],
-                      withData: false,
-                    );
-
-                    if (result != null) {
-                      final singleFile = result.files.single;
-                      
-                      if (!mounted) return;
-                      showDialog(
-                        context: this.context,
-                        barrierDismissible: false,
-                        builder: (_) => const Center(child: CircularProgressIndicator()),
-                      );
-
-                      final text = await PdfService().extractText(
-                        filePath: singleFile.path,
-                        bytes: singleFile.bytes,
-                      );
-
-                      if (mounted) {
-                        parentNavigator.pop(); // Fermer le loader
-                        if (text.isEmpty) {
-                          parentScaffold.showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "Ce PDF ne contient pas de texte sélectionnable (PDF scanné). Utilise l'option 'Scanner un cours' !",
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              backgroundColor: Colors.orange,
-                              duration: Duration(seconds: 6),
-                            ),
-                          );
-                        } else {
-                          parentNavigator.push(
-                            MaterialPageRoute(builder: (_) => GeneratingScreen(ocrText: text)),
-                          );
-                        }
-                      }
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      parentScaffold.showSnackBar(
-                      SnackBar(content: Text("Erreur lors de l'import : $e")),
-                      );                    }
-                  }
-                },
-              ),
-            ],
+                const Text(
+                  'Créer une nouvelle fiche',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 24),
+                _createOptionItem(
+                  icon: Icons.camera_alt_rounded,
+                  color: const Color(0xFF2D6A2D),
+                  title: 'Scanner un cours',
+                  subtitle: 'Prendre une photo de tes notes',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CameraOCRScreen()));
+                  },
+                ),
+                const SizedBox(height: 16),
+                _createOptionItem(
+                  icon: Icons.picture_as_pdf_rounded,
+                  color: const Color(0xFFE24B4A),
+                  title: 'Importer un PDF',
+                  subtitle: 'Générer depuis un document',
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _pickAndProcessPDF();
+                  },
+                ),
+                const SizedBox(height: 16),
+                _createOptionItem(
+                  icon: Icons.photo_library_rounded,
+                  color: const Color(0xFF185FA5),
+                  title: 'Importer une image',
+                  subtitle: 'Depuis ta galerie photos',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CameraOCRScreen()));
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
+      transitionBuilder: (context, anim1, anim2, child) {
+        final curvedAnim = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(curvedAnim),
+          child: child,
+        );
+      },
     );
+  }
+
+  Future<void> _pickAndProcessPDF() async {
+    try {
+      final FilePickerResult? result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        if (!mounted) return;
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+
+        final text = await _ocrService.extractTextFromPDF(result.files.single.path!);
+        
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+
+        if (text.trim().isEmpty || text.contains('Erreur')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Impossible d\'extraire le texte du PDF')),
+          );
+          return;
+        }
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => GeneratingScreen(ocrText: text),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de l\'import : $e')),
+        );
+      }
+    }
   }
 
   Widget _createOptionItem({
@@ -303,37 +312,100 @@ class _HomeScreenState extends State<HomeScreen> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade100),
-          borderRadius: BorderRadius.circular(16),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade100),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text(subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+            ],
+          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+      ),
+    );
+  }
+
+  Widget _buildProfileNavTab(int index, UserState state) {
+    final isSelected = _currentIndex == index;
+    final avatarId = state is UserLoaded ? state.profile['avatar_id'] : null;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _currentIndex = index),
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          height: 70,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOutCubic,
+                transform: Matrix4.translationValues(0, isSelected ? -14 : 0, 0),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: isSelected ? 44 : 32,
+                  height: isSelected ? 44 : 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: isSelected
+                        ? Border.all(color: AppColors.primary, width: 2)
+                        : Border.all(color: Colors.grey.shade300, width: 1.5),
+                    boxShadow: isSelected
+                        ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 3))]
+                        : null,
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      avatarId != null
+                          ? 'assets/avatars/avatar$avatarId.png'
+                          : 'assets/avatars/avatar1.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.person_rounded,
+                        color: isSelected ? AppColors.primary : Colors.grey.shade500,
+                        size: isSelected ? 24 : 20,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  Text(subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                ],
+              const SizedBox(height: 2),
+              AnimatedOpacity(
+                opacity: isSelected ? 0.0 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                child: Text(
+                  'Profil',
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 10, fontWeight: FontWeight.w500),
+                ),
               ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
-          ],
+            ],
+          ),
         ),
       ),
     );

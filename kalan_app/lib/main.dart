@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 import 'package:kalan_app/core/theme/app_theme.dart';
 import 'package:kalan_app/core/utils/text_scale.dart';
 import 'package:kalan_app/data/local/database_helper.dart';
@@ -27,6 +26,7 @@ import 'package:kalan_app/presentation/blocs/notification/notification_bloc.dart
 import 'package:kalan_app/data/repositories/leaderboard_repository_impl.dart';
 import 'package:kalan_app/services/sync_service.dart';
 import 'package:kalan_app/presentation/widgets/celebration_listener.dart';
+import 'package:kalan_app/presentation/widgets/notification_signal_banner.dart';
 import 'package:kalan_app/services/connectivity_service.dart';
 import 'package:kalan_app/services/deep_link_service.dart';
 import 'package:app_links/app_links.dart';
@@ -58,7 +58,7 @@ void main() async {
   appLinks.uriLinkStream.listen((uri) {
     DeepLinkService.handleIncomingLink(uri);
   });
-  
+
   appLinks.getInitialLink().then((uri) {
     if (uri != null) DeepLinkService.handleIncomingLink(uri);
   });
@@ -89,8 +89,10 @@ void main() async {
         RepositoryProvider<QuizRepositoryImpl>.value(value: quizRepo),
         RepositoryProvider<UserRepositoryImpl>.value(value: userRepo),
         RepositoryProvider<BadgeRepositoryImpl>.value(value: badgeRepo),
-        RepositoryProvider<LeaderboardRepositoryImpl>.value(value: leaderboardRepo),
-        RepositoryProvider<NotificationRepositoryImpl>.value(value: notificationRepo),
+        RepositoryProvider<LeaderboardRepositoryImpl>.value(
+            value: leaderboardRepo),
+        RepositoryProvider<NotificationRepositoryImpl>.value(
+            value: notificationRepo),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -137,17 +139,18 @@ class KalanApp extends StatelessWidget {
       themeMode: ThemeMode.light,
       home: const SplashScreen(),
       builder: (context, child) {
-        return CelebrationListener(
-          navigatorKey: appNavigatorKey,
-          child: MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(TextScale.normal.factor),
+        return NotificationSignalBanner(
+          child: CelebrationListener(
+            navigatorKey: appNavigatorKey,
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(TextScale.normal.factor),
+              ),
+              child: child!,
             ),
-            child: child!,
           ),
         );
       },
     );
   }
 }
-

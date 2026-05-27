@@ -11,9 +11,10 @@ class SubmitQuiz extends QuizEvent {
   final int score;
   final int total;
   final int duration;
+  final int xpGained;
 
-  const SubmitQuiz({this.deckId, required this.score, required this.total, required this.duration});
+  const SubmitQuiz({this.deckId, required this.score, required this.total, required this.duration, this.xpGained = 0});
 
   @override
-  List<Object?> get props => [deckId, score, total, duration];
+  List<Object?> get props => [deckId, score, total, duration, xpGained];
 }

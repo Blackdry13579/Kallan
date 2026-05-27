@@ -1,22 +1,73 @@
 # ═══════════════════════════════════════════════════
-# CLÉS ET CONFIGS LOCALES
+# 1. CLÉS, CONFIGURATIONS ET SECRETS (SÉCURITÉ)
 # ═══════════════════════════════════════════════════
+# Fichiers d'environnement
 .env
 .env.local
+.env.test
+.env.development
 .env.*.local
+!.env.example
+
+# Clés privées, certificats et keystores
 *.pem
 *.key
 *.p12
 *.jks
-kalan_app/android/key.properties
+*.keystore
+*.properties
+local.properties
+key.properties
+
+# Fichiers secrets d'intégration
 kalan_app/ios/Runner/GoogleService-Info.plist
 kalan_app/ios/Runner/Info.plist
 kalan_app/android/app/google-services.json
 kalan_app/lib/firebase_options.dart
+kalan_app/lib/data/remote/supabase_credentials.dart
+kalan_app/lib/core/constants/api_keys.dart
+
+# Backend Supabase / Firebase config sensible
+**/supabase/config.toml
+**/service_account.json
+kalan_backend/.env
+kalan-backend/.env
 
 # ═══════════════════════════════════════════════════
-# MODÈLES IA LOCAUX (TRÈS LOURDS)
+# 2. AGENTS D'IA, LLM ET SYSTEMES CLAUDE / GEMINI
 # ═══════════════════════════════════════════════════
+# Dossiers des assistants d'IA (Claude, Gemini, etc.)
+.gemini/
+.anthropic/
+.claude/
+.copilot/
+.cursor/
+.brain/
+brain/
+**/brain/
+**/.brain/
+**/.gemini/
+**/.anthropic/
+**/.claude/
+
+# Prompts d'IA et résumés IA
+gemini_prompt_*.txt
+gemini_prompt*.txt
+AI_RESUME.md
+RESUME_OPTIMISATION_DEFIS_IA.md
+
+# Fichiers temporaires d'analyse d'IA et logs de scripts
+analyze*.txt
+analyze_full_output.txt
+analyze_output.txt
+analyze_raw.txt
+flutter_analyze_output.txt
+kalan_app/analyze_*.txt
+*.log
+**/logs/
+**/*.log
+
+# Modèles IA locaux (très lourds, GGUF/TFLite/etc.)
 *.gguf
 *.bin
 *.task
@@ -27,36 +78,24 @@ kalan_app/assets/models/
 kalan_app/android/app/src/main/assets/models/
 
 # ═══════════════════════════════════════════════════
-# SQL ET DUMP DE BASE DE DONNÉES
+# 3. FICHIERS LOURDS ET ARCHIVES TEMPORAIRES
 # ═══════════════════════════════════════════════════
-*.sql
-supabase/
-
-# ═══════════════════════════════════════════════════
-# FICHIERS TEMPORAIRES ET D’ANALYSE
-# ═══════════════════════════════════════════════════
-analyze*.txt
-flutter_analyze_output.txt
-kalan_app/analyze_*.txt
+*.zip
+*.tar.gz
+*.tar
+*.gz
+*.rar
+*.7z
+commandlinetools.zip
 kalan_app/commandlinetools.zip
+scratch/
+**/scratch/
 
-# ═══════════════════════════════════════════════════
-# DOSSIERS À NE PAS PUSHER
-# ═══════════════════════════════════════════════════
+# Dossiers locaux de tests ou à ne pas sauvegarder
 kalan_flutter/
 
 # ═══════════════════════════════════════════════════
-# BACKEND SENSIBLE
-# ═══════════════════════════════════════════════════
-kalan_backend/.env
-kalan_backend/supabase/config.toml
-kalan_backend/service_account.json
-kalan-backend/.env
-kalan-backend/supabase/config.toml
-kalan-backend/service_account.json
-
-# ═══════════════════════════════════════════════════
-# BUILD ET CACHE
+# 4. COMPILATION, BUILD ET PACKAGES (FLUTTER/DART)
 # ═══════════════════════════════════════════════════
 **/build/
 **/.dart_tool/
@@ -69,14 +108,40 @@ kalan-backend/service_account.json
 **/generated/
 **/*.g.dart
 **/*.freezed.dart
+
+# Android spécifique
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# iOS spécifique
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+
+# ═══════════════════════════════════════════════════
+# 5. DÉPENDANCES WEB (NODE) ET BASE DE DONNÉES
+# ═══════════════════════════════════════════════════
+**/node_modules/
+package-lock.json
+*.sql
+supabase/
+
+# ═══════════════════════════════════════════════════
+# 6. CONFIGURATIONS D'ÉDITEURS (IDE)
+# ═══════════════════════════════════════════════════
 **/.idea/
 **/.vscode/
 **/*.iml
+**/*.ipr
+**/*.iws
 
 # ═══════════════════════════════════════════════════
-# OS
+# 7. FICHIERS SYSTÈME (OS)
 # ═══════════════════════════════════════════════════
 .DS_Store
 Thumbs.db
 *.lnk
-
+desktop.ini

@@ -90,5 +90,16 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         } catch (_) {}
       }
     });
+
+    on<RefreshBadges>((event, emit) async {
+      if (state is UserLoaded) {
+        final currentState = state as UserLoaded;
+        try {
+          final userId = currentState.profile['uuid'] ?? '';
+          final badges = await _repository.getUserBadges(userId);
+          emit(currentState.copyWith(badges: badges));
+        } catch (_) {}
+      }
+    });
   }
 }

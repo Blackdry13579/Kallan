@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,15 +5,15 @@ import 'package:intl/intl.dart';
 import '../../core/utils/level_utils.dart';
 import '../blocs/user/user_bloc.dart';
 import '../blocs/user/user_state.dart';
+import 'home_screen.dart';
 import 'flashcard_study_screen.dart';
 import 'badges_screen.dart';
 import 'notification_screen.dart';
-import '../../data/local/database_helper.dart';
 import 'roadmap_screen.dart';
+import 'create_deck_screen.dart';
+import 'battle_lobby_screen.dart';
 import '../blocs/notification/notification_bloc.dart';
 import '../blocs/notification/notification_state.dart';
-import 'library_screen.dart';
-import 'battle_lobby_screen.dart';
 
 class HomeDashboard extends StatelessWidget {
   const HomeDashboard({super.key});
@@ -34,38 +33,24 @@ class HomeDashboard extends StatelessWidget {
             if (state is UserLoaded) {
               final profile = state.profile;
               final stats = state.stats;
-              final userBadges = state.badges;
               final points = profile['points'] as int? ?? 0;
               final levelInfo = LevelUtils.getLevelInfo(points);
               final recentDecks = (stats['recentDecks'] as List<dynamic>?) ?? [];
 
               return SafeArea(
                 child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(context),
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Opacity(
-                                opacity: 0.0,
-                                child: IgnorePointer(
-                                  child: _buildFloatingBanner(context, profile['pseudo'] ?? 'Ami', heroTag: 'mascot_hero_hidden'),
-                                ),
-                              ),
-                              _buildIntegratedLevelBlock(context, levelInfo, points),
-                            ],
-                          ),
-                          _buildFloatingBanner(context, profile['pseudo'] ?? 'Ami'),
-                        ],
-                      ),
-                      _buildDynamicSubjectsGrid(context, recentDecks),
-                      _buildArenaBlock(context),
-                      if (userBadges.isNotEmpty) _buildBadgesSection(context, userBadges),
+                      _buildHeader(context, profile, points),
+                      const SizedBox(height: 18),
+                      _buildLevelBanner(context, levelInfo, points),
+                      const SizedBox(height: 20),
+                      _buildActionGrid(context),
+                      const SizedBox(height: 20),
+                      _buildBattleBanner(context),
+                      const SizedBox(height: 20),
                       _buildRecentActivitySection(context, recentDecks),
                       const SizedBox(height: 100),
                     ],
@@ -80,243 +65,117 @@ class HomeDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+  // ── HEADER ──────────────────────────────────────────────────────────────────
+  Widget _buildHeader(BuildContext context, Map<String, dynamic> profile, int points) {
+    final avatarId = profile['avatar_id'];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
+          // Avatar circulaire avec étoile niveau
+          Stack(
+            clipBehavior: Clip.none,
             children: [
-              // Logo CIRCULAIRE (Grand, à gauche)
-              Image.asset(
-                'assets/images/LOGO-removebg-preview.png',
-                height: 56, 
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(Icons.school, color: Color(0xFF2D6A2D), size: 30),
+              Container(
+                width: 52, height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF4CAF50), width: 2.5),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 3))],
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    avatarId != null ? 'assets/avatars/avatar$avatarId.png' : 'assets/avatars/avatar1.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, color: Color(0xFF4CAF50), size: 30),
+                  ),
+                ),
               ),
-              const SizedBox(width: 6),
-              // Logo TEXTE KALAN (Petit, à droite)
-              Image.asset(
-                'assets/images/KALAN-removebg-preview.png',
-                height: 14, 
-                errorBuilder: (_, __, ___) => const Text('KALAN', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+              Positioned(
+                bottom: -2, right: -2,
+                child: Container(
+                  width: 20, height: 20,
+                  decoration: const BoxDecoration(color: Color(0xFFE8C87A), shape: BoxShape.circle),
+                  child: const Icon(Icons.star_rounded, color: Colors.white, size: 12),
+                ),
               ),
             ],
           ),
-          BlocBuilder<NotificationBloc, NotificationState>(
-            builder: (context, notificationState) {
-              final bool hasUnread = notificationState is NotificationLoaded &&
-                  notificationState.notifications.any((n) => n['is_read'] == 0);
-              
-              return Stack(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const NotificationScreen()),
-                      );
-                    },
-                    icon: const Icon(Icons.notifications_none_rounded, size: 26, color: Color(0xFF1A1A1A)),
-                  ),
-                  if (hasUnread)
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE24B4A),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 1.5),
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFloatingBanner(BuildContext context, String pseudo, {String heroTag = 'mascot_hero'}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF4CAF50), // Vert émeraude brillant (selon image racine)
-            Color(0xFF2E7D32), // Vert moyen
-            Color(0xFF1B5E20), // Vert foncé
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          stops: [0.0, 0.5, 1.0],
-        ),
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Hero(
-            tag: heroTag,
-            child: Image.asset(
-              'assets/images/Bonome.png',
-              height: 85, // Taille encore augmentée pour visibilité max
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(Icons.face_rounded, color: Colors.white, size: 40),
-            ),
-          ),
-          const SizedBox(width: 15),
+          const SizedBox(width: 12),
+          // Nom + sous-titre
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Bonjour, $pseudo 👋',
-                  style: const TextStyle(
-                    color: Colors.white, 
-                    fontSize: 20, 
-                    fontWeight: FontWeight.w900,
-                  ),
+                  'Bonjour, ${profile['pseudo'] ?? 'Ami'} 👋',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 2),
                 const Text(
                   'Prêt pour ta quête de savoir ?',
-                  style: TextStyle(
-                    color: Colors.white, 
-                    fontSize: 14, 
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF888888)),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIntegratedLevelBlock(BuildContext context, LevelInfo levelInfo, int points) {
-    final progress = (points / levelInfo.nextLevelPoints).clamp(0.0, 1.0);
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const RoadmapScreen()),
-        );
-      },
-      child: Transform.translate(
-        offset: const Offset(0, -15),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.fromLTRB(20, 35, 20, 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5)),
-            ],
-            border: Border.all(color: Colors.black.withValues(alpha: 0.05), width: 1),
+          // Compteur XP
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🪙', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+                Text(
+                  NumberFormat('#,###').format(points).replaceAll(',', ' '),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFFD4A017)),
+                ),
+              ],
+            ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(width: 8),
+          // Cloche notifications
+          BlocBuilder<NotificationBloc, NotificationState>(
+            builder: (context, notifState) {
+              final unreadCount = notifState is NotificationLoaded
+                  ? notifState.notifications.where((n) => n['is_read'] == 0).length
+                  : 0;
+              return GestureDetector(
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen())),
+                child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Text(
-                      'STATUT',
-                      style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.w700, letterSpacing: 1),
+                    Container(
+                      width: 42, height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
+                      ),
+                      child: const Icon(Icons.notifications_none_rounded, size: 22, color: Color(0xFF1A1A1A)),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      levelInfo.title,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
-                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: -3, right: -3,
+                        child: Container(
+                          width: 19, height: 19,
+                          decoration: const BoxDecoration(color: Color(0xFFE24B4A), shape: BoxShape.circle),
+                          child: Center(
+                            child: Text(
+                              unreadCount > 9 ? '9+' : '$unreadCount',
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 60,
-                    height: 60,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: const Size(60, 60),
-                          painter: OuroborosPainter(progress: progress, color: const Color(0xFF2D5C14)),
-                        ),
-                        Text(
-                          '${levelInfo.level}',
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDynamicSubjectsGrid(BuildContext context, List<dynamic> recentDecks) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Tes matières', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
-              GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LibraryScreen())),
-                child: const Text('Voir tout', style: TextStyle(fontSize: 11, color: Color(0xFF2D5C14), fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          FutureBuilder<List<Map<String, dynamic>>>(
-            future: DatabaseHelper.instance.getAllSubjects(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const SizedBox(height: 100);
-              final subjects = snapshot.data!.take(4).toList();
-              
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 2.2,
-                ),
-                itemCount: subjects.length,
-                itemBuilder: (context, index) {
-                  final s = subjects[index];
-                  final color = Color(s['color'] as int);
-                  return _buildCategoryItem(s['label'], 'Découvrir', Icons.school_rounded, color.withValues(alpha: 0.1), color);
-                },
               );
             },
           ),
@@ -325,105 +184,135 @@ class HomeDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryItem(String title, String count, IconData icon, Color bgColor, Color iconColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 2))],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
-            child: Icon(icon, size: 18, color: iconColor),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
-                Text(count, style: const TextStyle(fontSize: 9, color: Color(0xFFAAAAAA))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // ── BANNIÈRE NIVEAU (même hauteur que profil = 110px) ───────────────────────
+  Widget _buildLevelBanner(BuildContext context, LevelInfo levelInfo, int points) {
+    final (levelColors, mascotImg) = _getLevelAssets(levelInfo.level);
+    final progress = (levelInfo.nextLevelPoints > 0)
+        ? (points / levelInfo.nextLevelPoints).clamp(0.0, 1.0)
+        : 1.0;
 
-  Widget _buildBadgesSection(BuildContext context, List<Map<String, dynamic>> userBadges) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RoadmapScreen())),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: SizedBox(
+          height: 132,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              const Text('Tes badges', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
-              GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BadgesScreen())),
-                child: const Text('Voir tout', style: TextStyle(fontSize: 11, color: Color(0xFF2D5C14), fontWeight: FontWeight.w700)),
+              // Fond de bannière aligné en bas — 110px comme dans profil
+              Positioned(
+                bottom: 0, left: 0, right: 0,
+                child: Container(
+                  height: 110,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: levelColors,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [BoxShadow(color: levelColors.first.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 5))],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 110, 0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'STATUT ACTUEL',
+                          style: TextStyle(color: Colors.white70, fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          levelInfo.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text('Niveau ${levelInfo.level}', style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700)),
+                            const Spacer(),
+                            Text('${(progress * 100).toInt()}%', style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.white.withValues(alpha: 0.25),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF76D572)),
+                            minHeight: 5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Mascot flottant au-dessus de la bannière
+              Positioned(
+                right: 6,
+                bottom: 0,
+                child: Image.asset(
+                  'assets/roadmap/$mascotImg',
+                  height: 126,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 80,
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: DatabaseHelper.instance.getAllBadges(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const SizedBox.shrink();
-                final allBadges = snapshot.data!;
-                final unlockedKeys = userBadges.map((b) => b['badge_key']).toSet();
-                final earnedBadges = allBadges.where((b) => unlockedKeys.contains(b['id'])).toList();
+        ),
+      ),
+    );
+  }
 
-                return ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: earnedBadges.length.clamp(0, 6),
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final badge = earnedBadges[index];
-                    final color = Color(badge['color'] as int);
-                    final imagePath = badge['image_path'] as String?;
-                    return Column(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: color, width: 1.5),
-                          ),
-                          alignment: Alignment.center,
-                          child: ClipOval(
-                            child: imagePath != null
-                                ? Image.asset(
-                                    'assets/badges/$imagePath',
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Text(badge['emoji'] ?? '🏆', style: const TextStyle(fontSize: 20)),
-                                  )
-                                : Text(badge['emoji'] ?? '🏆', style: const TextStyle(fontSize: 20)),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          badge['label'],
-                          style: const TextStyle(fontSize: 9, color: Color(0xFF555555), fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
+  (List<Color>, String) _getLevelAssets(int level) {
+    return switch (level) {
+      2 => (const [Color(0xFF1B5E20), Color(0xFF2E7D32)], 'mascot-2.png'),
+      3 => (const [Color(0xFFBF360C), Color(0xFFD84315)], 'mascot-3.png'),
+      4 => (const [Color(0xFF4A148C), Color(0xFF7B1FA2)], 'mascot-4.png'),
+      5 => (const [Color(0xFF004D40), Color(0xFF00796B)], 'mascot-5.png'),
+      6 => (const [Color(0xFF7B4700), Color(0xFFBF8000)], 'mascot-6.png'),
+      _ => (const [Color(0xFF2E7D32), Color(0xFF43A047)], 'mascot-1.png'),
+    };
+  }
+
+  // ── GRILLE D'ACTIONS (3 blocs colorés) ──────────────────────────────────────
+  Widget _buildActionGrid(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ActionCard(
+              title: 'Générer\nFlashcard',
+              iconAsset: 'add_3d.png',
+              gradientColors: const [Color(0xFF8B6FFF), Color(0xFF5A4FDD)],
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateDeckScreen())),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _ActionCard(
+              title: 'Mon\nParcours',
+              iconAsset: 'library_3d.png',
+              gradientColors: const [Color(0xFF43C059), Color(0xFF2E7D32)],
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RoadmapScreen())),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _ActionCard(
+              title: 'Mes\nBadges',
+              iconAsset: 'leaderboard_3d.png',
+              gradientColors: const [Color(0xFFFFB340), Color(0xFFD4840A)],
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BadgesScreen())),
             ),
           ),
         ],
@@ -431,9 +320,80 @@ class HomeDashboard extends StatelessWidget {
     );
   }
 
+  // ── BANNIÈRE DÉFI (trophée + texte, sans barre XP) ──────────────────────────
+  Widget _buildBattleBanner(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BattleLobbyScreen())),
+        child: Container(
+          height: 110,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF43A047)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [BoxShadow(color: const Color(0xFF1B5E20).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 5))],
+          ),
+          child: Row(
+            children: [
+              // Trophée dans un cercle
+              Container(
+                width: 52, height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFE8C87A).withValues(alpha: 0.4), width: 1.5),
+                ),
+                child: const Center(child: Text('🏆', style: TextStyle(fontSize: 26))),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Défie tes amis ! 🔥',
+                      maxLines: 1,
+                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Lance un duel, gagne des XP ⚡',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Text(
+                  'Jouer',
+                  style: TextStyle(color: Color(0xFF1B5E20), fontSize: 12, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── ACTIVITÉS RÉCENTES ───────────────────────────────────────────────────────
   Widget _buildRecentActivitySection(BuildContext context, List<dynamic> recentDecks) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -442,7 +402,7 @@ class HomeDashboard extends StatelessWidget {
             children: [
               const Text('Activités récentes', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
               GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LibraryScreen())),
+                onTap: () => HomeScreen.of(context)?.changeTab(1),
                 child: const Text('Voir tout', style: TextStyle(fontSize: 11, color: Color(0xFF2D5C14), fontWeight: FontWeight.w700)),
               ),
             ],
@@ -466,51 +426,49 @@ class HomeDashboard extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: recentDecks.length.clamp(0, 4),
-                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.black.withValues(alpha: 0.03)),
+                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.black.withValues(alpha: 0.04)),
                 itemBuilder: (context, index) {
                   final deck = recentDecks[index];
-                  final subject = deck['subject'] ?? 'Général';
-                  final score = deck['lastScore'];
-                  final dateStr = deck['created_at'] ?? DateTime.now().toIso8601String();
+                  final subject = deck['subject'] as String? ?? 'Général';
+                  final xpGained = deck['xp_gained'] as int?;
+                  final dateStr = deck['created_at'] as String? ?? DateTime.now().toIso8601String();
                   final date = DateTime.tryParse(dateStr) ?? DateTime.now();
+                  final color = _subjectColor(subject);
 
                   return ListTile(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FlashcardStudyScreen(deckTitle: deck['title'], deckUuid: deck['uuid']),
-                        ),
-                      );
-                    },
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                    leading: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: _getSubjectColor(subject).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FlashcardStudyScreen(deckTitle: deck['title'], deckUuid: deck['uuid']),
                       ),
-                      child: Icon(Icons.book_rounded, size: 18, color: _getSubjectColor(subject)),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: Container(
+                      width: 38, height: 38,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.book_rounded, size: 20, color: color),
                     ),
                     title: Text(
-                      deck['title'],
+                      deck['title'] as String? ?? '',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
                     ),
-                    subtitle: Row(
-                      children: [
-                        Text(
-                          score != null ? 'Score : $score%' : 'En cours',
-                          style: TextStyle(fontSize: 11, color: score != null ? _getSubjectColor(subject) : const Color(0xFF999999), fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatDate(date),
-                          style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
-                        ),
-                      ],
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFFCCCCCC)),
+                    subtitle: Text(_formatDate(date), style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA))),
+                    trailing: (xpGained != null && xpGained > 0)
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF7EA),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '+$xpGained XP',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF2D6A2D)),
+                            ),
+                          )
+                        : const Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFFCCCCCC)),
                   );
                 },
               ),
@@ -520,122 +478,118 @@ class HomeDashboard extends StatelessWidget {
     );
   }
 
-  Color _getSubjectColor(String subject) {
-    switch (subject.toLowerCase()) {
-      case 'mathématiques':
-      case 'maths':
-        return const Color(0xFF185FA5);
-      case 'svt':
-        return const Color(0xFF2D6A2D);
-      case 'physique-chimie':
-        return const Color(0xFF6A2D9F);
-      case 'anglais':
-        return const Color(0xFFE07B39);
-      case 'français':
-        return const Color(0xFFB00020);
-      case 'histoire-géo':
-        return const Color(0xFF854F0B);
-      default:
-        return const Color(0xFF2196F3);
-    }
+  Color _subjectColor(String subject) {
+    return switch (subject.toLowerCase()) {
+      'mathématiques' || 'maths' => const Color(0xFF185FA5),
+      'svt' => const Color(0xFF2D6A2D),
+      'physique-chimie' => const Color(0xFF6A2D9F),
+      'anglais' => const Color(0xFFE07B39),
+      'français' => const Color(0xFFB00020),
+      'histoire-géo' => const Color(0xFF854F0B),
+      _ => const Color(0xFF2196F3),
+    };
   }
 
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
+    final diff = DateTime.now().difference(date);
     if (diff.inDays == 0) return 'Aujourd\'hui';
     if (diff.inDays == 1) return 'Hier';
-    return DateFormat('dd/MM').format(date);
+    return '${diff.inDays} jours';
   }
+}
 
-  Widget _buildArenaBlock(BuildContext context) {
+// ── WIDGET ACTION CARD ────────────────────────────────────────────────────────
+class _ActionCard extends StatelessWidget {
+  final String title;
+  final String iconAsset;
+  final List<Color> gradientColors;
+  final VoidCallback onTap;
+
+  const _ActionCard({
+    required this.title,
+    required this.iconAsset,
+    required this.gradientColors,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BattleLobbyScreen())),
+      onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        padding: const EdgeInsets.all(18),
+        height: 108,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF2D6A2D), Color(0xFF1B5E20)],
+          gradient: LinearGradient(
+            colors: gradientColors,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: const Color(0xFF2D6A2D).withValues(alpha: 0.25), blurRadius: 15, offset: const Offset(0, 8))],
-        ),
-        child: Row(
-          children: [
-            Image.asset(
-              'assets/images/epe.png',
-              height: 52,
-              errorBuilder: (_, __, ___) => const Text('⚔️', style: TextStyle(fontSize: 32)),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: gradientColors.first.withValues(alpha: 0.38),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
             ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('L\'ARÈNE KALAN', style: TextStyle(color: Color(0xFFFAC775), fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.2)),
-                  Text('Défie tes amis !', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                  Text('Mise des XP et gagne le duel ⚡', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                ],
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Cercle décoratif de fond
+            Positioned(
+              top: -20, right: -20,
+              child: Container(
+                width: 80, height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.09),
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
-              child: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Icône 3D
+                  Image.asset(
+                    'assets/icons/game/3d/$iconAsset',
+                    height: 54,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.star_rounded, color: Colors.white, size: 40),
+                  ),
+                  // Titre + bouton flèche
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 24, height: 24,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.28),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 13),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
-
-class OuroborosPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-
-  OuroborosPainter({required this.progress, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 4;
-    const strokeWidth = 7.0;
-
-    final trackPaint = Paint()
-      ..color = const Color(0xFFF0EEE9)
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-    canvas.drawCircle(center, radius, trackPaint);
-
-    final progressPaint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      2 * math.pi * progress,
-      false,
-      progressPaint,
-    );
-    
-    final headAngle = -math.pi / 2 + (2 * math.pi * progress);
-    final headOffset = Offset(
-      center.dx + radius * math.cos(headAngle),
-      center.dy + radius * math.sin(headAngle),
-    );
-    
-    final headPaint = Paint()..color = color;
-    canvas.drawCircle(headOffset, 4, headPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant OuroborosPainter oldDelegate) => true;
 }

@@ -10,6 +10,7 @@ import '../blocs/deck/deck_state.dart';
 import '../blocs/quiz/quiz_bloc.dart';
 import '../blocs/quiz/quiz_state.dart';
 import '../blocs/user/user_bloc.dart';
+import '../blocs/user/user_event.dart';
 import '../blocs/user/user_state.dart';
 import 'badge_unlock_popup.dart';
 import 'level_up_popup.dart';
@@ -70,6 +71,7 @@ class _CelebrationListenerState extends State<CelebrationListener> {
         BlocListener<BadgeBloc, BadgeState>(
           listener: (context, state) {
             if (state is! BadgeJustUnlocked) return;
+            context.read<UserBloc>().add(RefreshBadges());
             CelebrationCoordinator.queueOrRun(() {
               final ctx = CelebrationCoordinator.navigatorKey?.currentContext;
               if (ctx == null) return;
@@ -79,13 +81,14 @@ class _CelebrationListenerState extends State<CelebrationListener> {
                 emoji: state.emoji,
                 imagePath: state.imagePath,
                 color: state.color,
+                reason: state.description,
               );
             });
           },
         ),
         BlocListener<DeckBloc, DeckState>(
           listener: (context, state) {
-            if (state is DeckLoaded) {
+            if (state is DeckSaved) {
               context.read<BadgeBloc>().add(CheckNewBadges());
             }
           },

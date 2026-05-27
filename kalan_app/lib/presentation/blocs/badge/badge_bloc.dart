@@ -36,6 +36,7 @@ class BadgeBloc extends Bloc<BadgeEvent, BadgeState> {
             emoji: badgeData['emoji'] ?? '🏆',
             imagePath: badgeData['image_path'] as String?,
             color: badgeData['color'] as int? ?? 0xFF2D6A2D,
+            description: badgeData['description'] as String?,
           ));
         }
 
@@ -64,6 +65,7 @@ class BadgeBloc extends Bloc<BadgeEvent, BadgeState> {
                 emoji: badgeData['emoji'] ?? '🏆',
                 imagePath: badgeData['image_path'] as String?,
                 color: badgeData['color'] as int? ?? 0xFF2D6A2D,
+                description: badgeData['description'] as String?,
               ));
               // Petit délai si plusieurs badges débloqués en même temps
               await Future.delayed(const Duration(milliseconds: 500));

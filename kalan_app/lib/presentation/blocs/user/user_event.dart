@@ -45,3 +45,5 @@ class AddFriend extends UserEvent {
 }
 
 class LoadFriends extends UserEvent {}
+
+class RefreshBadges extends UserEvent {}

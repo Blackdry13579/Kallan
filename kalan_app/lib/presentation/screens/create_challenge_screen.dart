@@ -430,12 +430,37 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
 
   Future<void> _sendChallenge() async {
     if (_selectedUser == null) return;
+
+    final isAI = _selectedUser!['uuid'] == 'ai-kalan-uuid';
+    if (!isAI) {
+      final isOnline = _isUserOnline(_selectedUser!['last_active'] as String?);
+      if (!isOnline) {
+        if (!mounted) return;
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            title: const Text('Ami hors ligne', style: TextStyle(fontWeight: FontWeight.w900)),
+            content: Text('${_selectedUser!['pseudo']} n\'est pas connecté en ce moment. Le défi sera envoyé mais il devra accepter dès qu\'il se reconnecte.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF4500), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                child: const Text('Envoyer quand même'),
+              ),
+            ],
+          ),
+        );
+        if (confirm != true) return;
+      }
+    }
+
     setState(() => _isLoading = true);
     try {
       final inviterId = SupabaseService.currentUser!.id;
       final battleService = BattleService();
-      final isAI = _selectedUser!['uuid'] == 'ai-kalan-uuid';
-      
+
       final battle = await battleService.createBattle(
         inviterId: inviterId,
         invitedId: _selectedUser!['uuid'],
@@ -470,7 +495,9 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible d\'envoyer le défi. Vérifie ta connexion et réessaie.')),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

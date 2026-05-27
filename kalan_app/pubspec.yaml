@@ -54,11 +54,13 @@ flutter:
   assets:
     - .env
     - assets/images/
+    - assets/images/welcome/
     - assets/avatars/
     - assets/roadmap/
     - assets/badges/humanites/
     - assets/badges/langue/
     - assets/badges/litterature/
     - assets/badges/sciences/
+    - assets/audio/
     - assets/icons/
     - assets/icons/badges_niveau/

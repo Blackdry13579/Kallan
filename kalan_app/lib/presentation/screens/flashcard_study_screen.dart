@@ -11,7 +11,8 @@ import 'quiz_screen.dart';
 class FlashcardStudyScreen extends StatefulWidget {
   final String deckTitle;
   final String deckUuid;
-  const FlashcardStudyScreen({super.key, required this.deckTitle, required this.deckUuid});
+  const FlashcardStudyScreen(
+      {super.key, required this.deckTitle, required this.deckUuid});
 
   @override
   State<FlashcardStudyScreen> createState() => _FlashcardStudyScreenState();
@@ -52,6 +53,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
       } else {
         _timer?.cancel();
         if (mounted) {
+          AudioService().play('swipe');
           setState(() {
             _showAnswer = true;
           });
@@ -60,8 +62,10 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
     });
   }
 
-  void _nextCard(int total) {
-    AudioService().play('swipe');
+  void _nextCard(int total, {bool playSwipe = true}) {
+    if (playSwipe) {
+      AudioService().play('swipe');
+    }
     if (_currentIndex < total - 1) {
       setState(() {
         _currentIndex++;
@@ -181,19 +185,23 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
             }
           },
           builder: (context, state) {
-            if (state is FlashcardLoading && _sessionCards.isEmpty) return const Center(child: CircularProgressIndicator());
-            if (state is FlashcardError) return Center(child: Text(state.message));
-            
+            if (state is FlashcardLoading && _sessionCards.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (state is FlashcardError) {
+              return Center(child: Text(state.message));
+            }
+
             if (_sessionCards.isNotEmpty) {
               final cards = _sessionCards;
-              
+
               return Column(
                 children: [
                   _buildCustomTopBar(widget.deckTitle),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      '${_currentIndex + 1} sur ${cards.length}', 
+                      '${_currentIndex + 1} sur ${cards.length}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.grey,
@@ -207,19 +215,23 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
                     child: Center(
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 400),
-                        transitionBuilder: (Widget child, Animation<double> animation) {
-                          return RotationYTransition(animation: animation, child: child);
+                        transitionBuilder:
+                            (Widget child, Animation<double> animation) {
+                          return RotationYTransition(
+                              animation: animation, child: child);
                         },
-                        child: _showAnswer 
-                          ? _buildCardSide(cards[_currentIndex].answer, true) 
-                          : _buildCardSide(cards[_currentIndex].question, false),
+                        child: _showAnswer
+                            ? _buildCardSide(cards[_currentIndex].answer, true)
+                            : _buildCardSide(
+                                cards[_currentIndex].question, false),
                       ),
                     ),
                   ),
                   const SizedBox(height: 32),
-                  if (_showAnswer) 
-                    _buildFeedbackButtons(cards.length, cards[_currentIndex].uuid) 
-                  else 
+                  if (_showAnswer)
+                    _buildFeedbackButtons(
+                        cards.length, cards[_currentIndex].uuid)
+                  else
                     _buildFlipInstruction(),
                   const SizedBox(height: 32),
                 ],
@@ -337,7 +349,8 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: isAnswer ? const Color(0xFFEAF3DE) : const Color(0xFFF4F2EB),
+              color:
+                  isAnswer ? const Color(0xFFEAF3DE) : const Color(0xFFF4F2EB),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -345,7 +358,8 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: isAnswer ? const Color(0xFF2D6A2D) : Colors.grey.shade600,
+                color:
+                    isAnswer ? const Color(0xFF2D6A2D) : Colors.grey.shade600,
                 letterSpacing: 1.2,
               ),
             ),
@@ -418,7 +432,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
                 color: const Color(0xFFE24B4A),
                 onTap: () {
                   context.read<FlashcardBloc>().add(UpdateReview(cardUuid, 1));
-                  _nextCard(total);
+                  _nextCard(total, playSwipe: false);
                 },
               ),
               const SizedBox(width: 20),
@@ -429,7 +443,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
                 isPrimary: true,
                 onTap: () {
                   context.read<FlashcardBloc>().add(UpdateReview(cardUuid, 3));
-                  _nextCard(total);
+                  _nextCard(total, playSwipe: false);
                 },
               ),
               const SizedBox(width: 20),
@@ -464,7 +478,10 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
             decoration: BoxDecoration(
               color: isPrimary ? color : Colors.white,
               shape: BoxShape.circle,
-              border: isPrimary ? null : Border.all(color: Colors.black.withValues(alpha: 0.1), width: 0.5),
+              border: isPrimary
+                  ? null
+                  : Border.all(
+                      color: Colors.black.withValues(alpha: 0.1), width: 0.5),
               boxShadow: [
                 BoxShadow(
                   color: color.withValues(alpha: 0.1),
@@ -497,7 +514,9 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
 
 class RotationYTransition extends AnimatedWidget {
   final Widget child;
-  const RotationYTransition({super.key, required Animation<double> animation, required this.child}) : super(listenable: animation);
+  const RotationYTransition(
+      {super.key, required Animation<double> animation, required this.child})
+      : super(listenable: animation);
 
   @override
   Widget build(BuildContext context) {
@@ -508,7 +527,12 @@ class RotationYTransition extends AnimatedWidget {
         ..setEntry(3, 2, 0.001)
         ..rotateY(rotation),
       alignment: Alignment.center,
-      child: rotation > 1.5708 ? Transform(transform: Matrix4.identity()..rotateY(3.14159), alignment: Alignment.center, child: child) : child,
+      child: rotation > 1.5708
+          ? Transform(
+              transform: Matrix4.identity()..rotateY(3.14159),
+              alignment: Alignment.center,
+              child: child)
+          : child,
     );
   }
 }

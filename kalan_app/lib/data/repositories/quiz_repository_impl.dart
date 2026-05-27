@@ -14,7 +14,7 @@ class QuizRepositoryImpl implements QuizRepository {
   QuizRepositoryImpl(this._dbHelper, this._connectivity);
 
   @override
-  Future<void> saveQuizResult(String? deckId, int score, int total, int duration) async {
+  Future<void> saveQuizResult(String? deckId, int score, int total, int duration, int xpGained) async {
     final db = await _dbHelper.database;
     final prefs = await SharedPreferences.getInstance();
     final String userId = prefs.getString('current_user_uuid') ?? 'guest';
@@ -25,6 +25,7 @@ class QuizRepositoryImpl implements QuizRepository {
       score: score,
       total: total,
       durationSeconds: duration,
+      xpGained: xpGained,
       createdAt: DateTime.now(),
       isSynced: false,
     );

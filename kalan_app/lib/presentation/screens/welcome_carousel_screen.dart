@@ -15,16 +15,25 @@ class _WelcomeCarouselScreenState extends State<WelcomeCarouselScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<Map<String, String>> _pages = [
+  final List<Map<String, dynamic>> _pages = [
     {
       'title': 'Bienvenue sur KALAN',
       'description': 'Ton compagnon d\'apprentissage intelligent qui t\'accompagne partout, même sans connexion.',
-      'image': 'assets/images/Bonome.png',
+      'image': 'assets/images/welcome/enfant.png',
+      'isBackground': false,
     },
     {
-      'title': 'Révise et progresse',
-      'description': 'Crée tes propres fiches, passe des quiz et grimpe dans le classement pour devenir un sage !',
-      'image': 'assets/images/Bonome.png',
+      'title': 'Apprentissage intelligent',
+      'description': 'Réviser de manière simple et efficace avec des flashcards et des quiz avec notre IA hors ligne',
+      'image': 'assets/images/welcome/enfant.png',
+      'isBackground': true,
+      'buttonColor': Colors.blue,
+    },
+    {
+      'title': 'Bataille de Quiz',
+      'description': 'Un endroit pour défier vos amis en apprenant ensemble !',
+      'image': 'assets/images/welcome/quizbattle.png',
+      'isBackground': false,
     },
   ];
 
@@ -45,39 +54,49 @@ class _WelcomeCarouselScreenState extends State<WelcomeCarouselScreen> {
                 },
                 itemCount: _pages.length,
                 itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          _pages[index]['image']!,
-                          height: 350,
-                          fit: BoxFit.contain,
+                  final page = _pages[index];
+                  final isBackground = page['isBackground'] == true;
+
+                  return Stack(
+                    children: [
+                      if (isBackground)
+                        Positioned.fill(
+                          child: Image.asset(page['image']!, fit: BoxFit.cover),
                         ),
-                        const SizedBox(height: 40),
-                        Text(
-                          _pages[index]['title']!,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.fredoka(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: Column(
+                          mainAxisAlignment: isBackground ? MainAxisAlignment.start : MainAxisAlignment.center,
+                          children: [
+                            if (!isBackground) ...[
+                              Image.asset(page['image']!, height: 350, fit: BoxFit.contain),
+                              const SizedBox(height: 40),
+                            ] else 
+                              const SizedBox(height: 100),
+                            Text(
+                              page['title']!,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.fredoka(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w700,
+                                color: isBackground ? Colors.white : AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              page['description']!,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.fredoka(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                color: isBackground ? Colors.white70 : const Color(0xFF8A7A58),
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _pages[index]['description']!,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.fredoka(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: const Color(0xFF8A7A58),
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -105,7 +124,8 @@ class _WelcomeCarouselScreenState extends State<WelcomeCarouselScreen> {
                   ),
                   const SizedBox(height: 40),
                   KalanButton(
-                    text: _currentPage == _pages.length - 1 ? 'Commencer' : 'Suivant',
+                    backgroundColor: _pages[_currentPage]['buttonColor'] ?? AppColors.primary,
+                    text: _currentPage == _pages.length - 1 ? 'Commencer mon aventure' : 'Suivant',
                     onPressed: () {
                       if (_currentPage < _pages.length - 1) {
                         _pageController.nextPage(

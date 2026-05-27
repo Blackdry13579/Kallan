@@ -480,11 +480,13 @@ class _QuizScreenState extends State<QuizScreen> {
         _startTimer();
       } else {
         final duration = DateTime.now().difference(_startTime).inSeconds;
+        final xpGained = (_totalCorrect * 10) - ((_totalAnswered - _totalCorrect) * 5);
         context.read<QuizBloc>().add(SubmitQuiz(
           deckId: widget.deckUuid,
           score: _totalCorrect,
           total: _quizQuestions.length,
           duration: duration,
+          xpGained: xpGained,
         ));
       }
     });

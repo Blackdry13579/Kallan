@@ -15,6 +15,8 @@ class DeckLoaded extends DeckState {
   @override
   List<Object?> get props => [decks];
 }
+class DeckSaved extends DeckState {}
+
 class DeckError extends DeckState {
   final String message;
   const DeckError(this.message);

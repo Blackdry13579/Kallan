@@ -5,12 +5,14 @@ class KalanButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
   final bool isSecondary;
+  final Color? backgroundColor;
 
   const KalanButton({
     super.key,
     required this.text,
     this.onPressed,
     this.isSecondary = false,
+    this.backgroundColor,
   });
 
   @override
@@ -21,7 +23,7 @@ class KalanButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isSecondary ? AppColors.secondary : AppColors.primary,
+          backgroundColor: backgroundColor ?? (isSecondary ? AppColors.secondary : AppColors.primary),
           foregroundColor: AppColors.onPrimary,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),

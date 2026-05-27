@@ -29,12 +29,14 @@ class BadgeJustUnlocked extends BadgeState {
   final String emoji;
   final String? imagePath;
   final int color;
+  final String? description;
   const BadgeJustUnlocked({
     required this.label,
     required this.emoji,
     this.imagePath,
     required this.color,
+    this.description,
   });
   @override
-  List<Object?> get props => [label, emoji, imagePath, color];
+  List<Object?> get props => [label, emoji, imagePath, color, description];
 }
