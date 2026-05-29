@@ -3,20 +3,24 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../ai/gemma_service.dart';
+import '../ai/llamadart_engine.dart';
+import '../ai/local_model_config.dart';
 import '../ai/model_downloader.dart';
 import 'connectivity_service.dart';
+import 'qwen_flashcard_service.dart';
 
 class LocalAIService {
   static final LocalAIService _instance = LocalAIService._internal();
   factory LocalAIService() => _instance;
   LocalAIService._internal();
 
-  // LAZY : GemmaService n'est créé que si on en a vraiment besoin (offline).
-  // Cela empêche TfLite/XNNPack de s'initialiser lors de l'ouverture de l'arène.
+  // LAZY : services créés uniquement quand nécessaires.
   GemmaService? _gemmaService;
+  QwenFlashcardService? _qwenService;
 
   static String get _hfToken => dotenv.env['HF_TOKEN'] ?? '';
-  static const String _hfBaseUrl = 'https://router.huggingface.co/v1/chat/completions';
+  static const String _hfBaseUrl =
+      'https://router.huggingface.co/v1/chat/completions';
   static const List<String> _models = [
     'Qwen/Qwen2.5-72B-Instruct',
     'Qwen/Qwen2.5-7B-Instruct',
@@ -53,8 +57,9 @@ class LocalAIService {
     if (await canUseOnlineAI()) {
       debugPrint('[KALAN AI] En ligne → Qwen...');
       try {
-        final cards = await _generateOnlineFlashcards(text, subject)
-            .timeout(const Duration(seconds: 45));
+        final cards =
+            await _generateOnlineFlashcards(text, subject, context: userContext)
+                .timeout(const Duration(seconds: 45));
         if (cards.isNotEmpty) {
           debugPrint('[KALAN AI] ✅ ${cards.length} fiches via Qwen');
           return {'subject': subject, 'flashcards': cards, 'mode': 'online'};
@@ -70,7 +75,8 @@ class LocalAIService {
       debugPrint('[KALAN AI] Hors ligne ou HF_TOKEN absent → offline');
     }
 
-    final offline = await _generateOfflineFlashcards(text, subject, context: userContext);
+    final offline =
+        await _generateOfflineFlashcards(text, subject, context: userContext);
     return {
       'subject': subject,
       'flashcards': offline.cards,
@@ -82,25 +88,49 @@ class LocalAIService {
   // ─── Online : Qwen avec prompt structuré et système de rôle ───────────────
 
   Future<List<Map<String, String>>> _generateOnlineFlashcards(
-      String text, String subject) async {
-    final truncatedText = text.length > 6000 ? '${text.substring(0, 6000)}...' : text;
+    String text,
+    String subject, {
+    String? context,
+  }) async {
+    final truncatedText =
+        text.length > 6000 ? '${text.substring(0, 6000)}...' : text;
+    final lang = _detectLanguage(truncatedText);
+    final contextPart = context != null && context.trim().isNotEmpty
+        ? '''
 
-    final userPrompt = '''Texte de cours (matière : $subject) :
+Contexte et analyse du document fournis à l'IA :
+"""
+${context.trim()}
+"""
+'''
+        : '';
+
+    final langInstruction = _buildOnlineLangInstruction(lang);
+    final isEnglish = lang == 'anglais';
+
+    final userPrompt = '''$langInstruction
+
+${isEnglish ? 'Course text (subject: $subject)' : 'Texte de cours (matière : $subject)'} :
 """
 $truncatedText
 """
+$contextPart
 
-### ÉTAPE 1 — DIAGNOSTIC QUALITÉ
-Si le texte est illisible, trop court (< 15 mots) ou incohérent (caractères aléatoires),
-retourne UNIQUEMENT : {"error": "image_floue"}
+${isEnglish ? '### STEP 1 — QUALITY CHECK' : '### ÉTAPE 1 — DIAGNOSTIC QUALITÉ'}
+${isEnglish ? 'If the text is unreadable, too short (< 15 words) or incoherent (random characters),' : 'Si le texte est illisible, trop court (< 15 mots) ou incohérent (caractères aléatoires),'}
+${isEnglish ? 'return ONLY: {"error": "image_floue"}' : 'retourne UNIQUEMENT : {"error": "image_floue"}'}
 
-### ÉTAPE 2 — GÉNÉRATION (si texte lisible)
-Génère exactement 5 flashcards de révision variées.
-Règles :
-- Questions précises et ciblées (jamais "Explique le cours...")
-- Réponses courtes (1 à 2 phrases max)
-- Varie les types : Qu'est-ce que / Comment / Pourquoi / Quel est / En quelle année / Qui / Combien
-- JSON uniquement, sans markdown ni texte autour
+${isEnglish ? '### STEP 2 — GENERATION (if text is readable)' : '### ÉTAPE 2 — GÉNÉRATION (si texte lisible)'}
+${isEnglish ? 'Generate exactly 5 varied revision flashcards.' : 'Génère exactement 5 flashcards de révision variées.'}
+${isEnglish ? 'Rules:' : 'Règles :'}
+${isEnglish ? '- Language: all questions AND answers in English. Never in French.' : '- Langue : toutes les questions et réponses en $lang'}
+${isEnglish ? '- Questions MUST start with an interrogative word: What, How, Why, When, Who, Where, Which' : '- Questions commençant par un mot interrogatif : Quelle, Comment, Pourquoi, Quand, Qui, Où, Qu\'est-ce que'}
+${isEnglish ? '- FORBIDDEN: fill-in-the-blank questions with "..." or blanks' : '- INTERDIT : questions à trous avec "..." ou blancs à remplir'}
+${isEnglish ? '- Mix: 3 open questions + 2 True/False with explanation ("True, because..." or "False, because...")' : '- Mélange : 3 questions ouvertes + 2 questions Vrai/Faux avec explication ("Vrai, car..." ou "Faux, car...")'}
+${isEnglish ? '- Question: maximum 30 words, complete and clear' : '- Question : maximum 30 mots, bien formulée'}
+${isEnglish ? '- Answer: maximum 30 words, complete sentence' : '- Réponse : maximum 30 mots, phrase complète'}
+${isEnglish ? '- Use the document context to understand the topic and level' : '- Utilise le contexte du document pour comprendre le sujet et le niveau'}
+${isEnglish ? '- JSON only, no markdown, no surrounding text' : '- JSON uniquement, sans markdown ni texte autour'}
 
 [
   {"question": "...", "answer": "..."}
@@ -109,29 +139,32 @@ Règles :
     for (final model in _models) {
       try {
         debugPrint('[KALAN AI] Flashcards online via $model');
-        final response = await http.post(
-          Uri.parse(_hfBaseUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $_hfToken',
-          },
-          body: jsonEncode({
-            'model': model,
-            'messages': [
-              {
-                'role': 'system',
-                'content':
-                    'Tu es un assistant pédagogique expert. Tu génères uniquement du JSON valide, sans markdown, sans explication.',
+        final response = await http
+            .post(
+              Uri.parse(_hfBaseUrl),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $_hfToken',
               },
-              {'role': 'user', 'content': userPrompt},
-            ],
-            'temperature': 0.4,
-            'max_tokens': 1200,
-          }),
-        ).timeout(const Duration(seconds: 45));
+              body: jsonEncode({
+                'model': model,
+                'messages': [
+                  {
+                    'role': 'system',
+                    'content':
+                        'Tu es un assistant pédagogique expert. Tu génères uniquement du JSON valide, sans markdown, sans explication.',
+                  },
+                  {'role': 'user', 'content': userPrompt},
+                ],
+                'temperature': 0.4,
+                'max_tokens': 1200,
+              }),
+            )
+            .timeout(const Duration(seconds: 45));
 
         if (response.statusCode == 503 || response.statusCode == 429) {
-          debugPrint('[KALAN AI] $model indisponible (${response.statusCode}), suivant...');
+          debugPrint(
+              '[KALAN AI] $model indisponible (${response.statusCode}), suivant...');
           continue;
         }
         if (response.statusCode != 200) {
@@ -140,7 +173,7 @@ Règles :
         }
 
         final raw = jsonDecode(response.body)['choices']?[0]?['message']
-                ?['content']
+                    ?['content']
                 ?.toString() ??
             '';
         if (raw.isNotEmpty) {
@@ -161,30 +194,56 @@ Règles :
     throw Exception('Tous les modèles Qwen ont échoué pour les flashcards.');
   }
 
-  // ─── Offline : Gemma (lazy) → heuristique ─────────────────────────────────
+  // ─── Offline : Qwen GGUF → Gemma (fallback) → heuristique ───────────────
 
-  Future<
-      ({
-        List<Map<String, String>> cards,
-        String mode,
-        bool modelMissing
-      })> _generateOfflineFlashcards(String text, String subject, {String? context}) async {
+  Future<({List<Map<String, String>> cards, String mode, bool modelMissing})>
+      _generateOfflineFlashcards(String text, String subject,
+          {String? context}) async {
     if (text.trim().length < 10) {
       return (cards: _smartHeuristic(text), mode: 'heuristic', modelMissing: false);
     }
 
-    final modelInstalled = await ModelDownloader.isModelDownloaded();
-    if (!modelInstalled) {
-      debugPrint('[KALAN AI] Gemma absent → heuristique');
-      return (cards: _smartHeuristic(text), mode: 'heuristic', modelMissing: true);
+    // Limite stricte pour les appareils bas de gamme (1500 chars ≈ 400 tokens)
+    final truncated = text.length > 1500 ? '${text.substring(0, 1500)}...' : text;
+    final lang = _detectLanguage(truncated);
+
+    // 1. Qwen GGUF local (llamadart)
+    final qwenPath = await ModelDownloader.getModelPath(qwen25LocalModel);
+    if (qwenPath != null) {
+      try {
+        debugPrint('[KALAN AI] Qwen offline GGUF...');
+        _qwenService ??= QwenFlashcardService(LlamadartEngine());
+        await _qwenService!.ensureLoaded(qwenPath);
+        final result = await _qwenService!
+            .generateFlashcards(
+              text: truncated,
+              subject: subject,
+              context: context,
+              language: lang,
+            )
+            .timeout(const Duration(seconds: 600));
+        if (result.hasEnoughCards) {
+          debugPrint('[KALAN AI] ✅ ${result.flashcards.length} fiches via Qwen local');
+          return (cards: result.flashcards, mode: 'qwen_local', modelMissing: false);
+        }
+      } catch (e) {
+        debugPrint('[KALAN AI] Qwen local erreur : $e → fallback Gemma');
+      }
+    }
+
+    // 2. Gemma (fallback si installé)
+    final gemmaInstalled = await ModelDownloader.isGemmaInstalled();
+    if (!gemmaInstalled) {
+      return (
+        cards: _smartHeuristic(text),
+        mode: 'heuristic',
+        modelMissing: qwenPath == null
+      );
     }
 
     try {
-      debugPrint('[KALAN AI] Gemma offline...');
-      // Création lazy : TfLite ne charge que maintenant, pas avant
+      debugPrint('[KALAN AI] Gemma offline (fallback)...');
       _gemmaService ??= GemmaService();
-      final truncated = text.length > 4000 ? '${text.substring(0, 4000)}...' : text;
-      final lang = _detectLanguage(truncated);
       final prompt = _buildGemmaPrompt(truncated, subject, context: context, lang: lang);
       debugPrint('[KALAN AI] Langue détectée : $lang');
       final raw = await _gemmaService!
@@ -202,11 +261,35 @@ Règles :
     return (cards: _smartHeuristic(text), mode: 'heuristic', modelMissing: false);
   }
 
+  // ─── Instruction langue : écrite dans la langue du document ─────────────
+
+  String _buildOnlineLangInstruction(String lang) {
+    if (lang == 'anglais') {
+      return 'The document is written in English.\n'
+          'You MUST write every question and every answer in English.\n'
+          'Do NOT translate to French or any other language.';
+    }
+    if (lang == 'espagnol') {
+      return 'El documento está escrito en español.\n'
+          'DEBES escribir cada pregunta y cada respuesta en español.\n'
+          'No traduzcas al francés ni a ningún otro idioma.';
+    }
+    if (lang == 'arabe') {
+      return 'الوثيقة مكتوبة باللغة العربية.\n'
+          'يجب أن تكتب كل سؤال وكل إجابة باللغة العربية.\n'
+          'لا تترجم إلى الفرنسية أو أي لغة أخرى.';
+    }
+    return 'Langue du document : $lang.\n'
+        'Tu dois générer chaque question et chaque réponse en $lang.\n'
+        'Ne traduis jamais dans une autre langue.';
+  }
+
   // ─── Détection langue source ───────────────────────────────────────────────
 
   String _detectLanguage(String text) {
     final lower = text.toLowerCase();
     int frScore = 0, enScore = 0;
+<<<<<<< HEAD
     const frWords = [' le ', ' la ', ' les ', ' de ', ' du ', ' des ', ' une ', ' et ', ' est ', ' sont ', ' dans ', ' pour ', ' avec ', ' qui ', ' que ', ' ce ', ' se ', ' sur ', ' au ', ' il ', ' elle ', ' nous ', ' vous '];
     const enWords = [' the ', ' is ', ' are ', ' was ', ' were ', ' have ', ' has ', ' had ', ' will ', ' would ', ' can ', ' could ', ' this ', ' that ', ' from ', ' with ', ' and ', ' but ', ' for ', ' in ', ' of ', ' to ', ' they ', ' their '];
     for (final w in frWords) {
@@ -215,12 +298,68 @@ Règles :
     for (final w in enWords) {
       if (lower.contains(w)) enScore++;
     }
+=======
+    const frWords = [
+      ' le ',
+      ' la ',
+      ' les ',
+      ' de ',
+      ' du ',
+      ' des ',
+      ' une ',
+      ' et ',
+      ' est ',
+      ' sont ',
+      ' dans ',
+      ' pour ',
+      ' avec ',
+      ' qui ',
+      ' que ',
+      ' ce ',
+      ' se ',
+      ' sur ',
+      ' au ',
+      ' il ',
+      ' elle ',
+      ' nous ',
+      ' vous '
+    ];
+    const enWords = [
+      ' the ',
+      ' is ',
+      ' are ',
+      ' was ',
+      ' were ',
+      ' have ',
+      ' has ',
+      ' had ',
+      ' will ',
+      ' would ',
+      ' can ',
+      ' could ',
+      ' this ',
+      ' that ',
+      ' from ',
+      ' with ',
+      ' and ',
+      ' but ',
+      ' for ',
+      ' in ',
+      ' of ',
+      ' to ',
+      ' they ',
+      ' their '
+    ];
+    for (final w in frWords) if (lower.contains(w)) frScore++;
+    for (final w in enWords) if (lower.contains(w)) enScore++;
+>>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
     return enScore > frScore ? 'anglais' : 'français';
   }
 
   // ─── Prompt Gemma : bilingue, contexte, format robuste ────────────────────
 
-  String _buildGemmaPrompt(String text, String subject, {String? context, String lang = 'français'}) {
+  String _buildGemmaPrompt(String text, String subject,
+      {String? context, String lang = 'français'}) {
     final contextPart = (context != null && context.isNotEmpty)
         ? '\nCONTEXTE DE L\'ÉLÈVE : $context\n'
         : '';
@@ -262,7 +401,8 @@ Q1:''';
     }
 
     final trimmed = input.trim();
-    final hasNotes = notes != null && notes.trim().length >= 20;
+    final notesText = notes?.trim();
+    final hasNotes = notesText != null && notesText.length >= 20;
     final isQuestion = _isQuestion(trimmed);
 
     final int casNum;
@@ -270,10 +410,17 @@ Q1:''';
 
     if (hasNotes && isQuestion) {
       casNum = 1;
+<<<<<<< HEAD
       prompt = _buildCas1Prompt(trimmed, notes.trim());
     } else if (hasNotes) {
       casNum = 2;
       prompt = _buildCas2Prompt(trimmed, notes.trim());
+=======
+      prompt = _buildCas1Prompt(trimmed, notesText);
+    } else if (hasNotes) {
+      casNum = 2;
+      prompt = _buildCas2Prompt(trimmed, notesText);
+>>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
     } else {
       casNum = 3;
       prompt = _buildCas3Prompt(trimmed);
@@ -282,29 +429,32 @@ Q1:''';
     for (final model in _models) {
       try {
         debugPrint('[KALAN AI] generateSingleFlashcard cas $casNum via $model');
-        final response = await http.post(
-          Uri.parse(_hfBaseUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $_hfToken',
-          },
-          body: jsonEncode({
-            'model': model,
-            'messages': [
-              {
-                'role': 'system',
-                'content':
-                    'Tu es un assistant pédagogique expert. Tu génères uniquement du JSON valide, sans markdown, sans explication.',
+        final response = await http
+            .post(
+              Uri.parse(_hfBaseUrl),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $_hfToken',
               },
-              {'role': 'user', 'content': prompt},
-            ],
-            'temperature': 0.2,
-            'max_tokens': 256,
-          }),
-        ).timeout(const Duration(seconds: 35));
+              body: jsonEncode({
+                'model': model,
+                'messages': [
+                  {
+                    'role': 'system',
+                    'content':
+                        'Tu es un assistant pédagogique expert. Tu génères uniquement du JSON valide, sans markdown, sans explication.',
+                  },
+                  {'role': 'user', 'content': prompt},
+                ],
+                'temperature': 0.2,
+                'max_tokens': 256,
+              }),
+            )
+            .timeout(const Duration(seconds: 35));
 
         if (response.statusCode == 503 || response.statusCode == 429) {
-          debugPrint('[KALAN AI] $model indisponible (${response.statusCode}), suivant...');
+          debugPrint(
+              '[KALAN AI] $model indisponible (${response.statusCode}), suivant...');
           continue;
         }
         if (response.statusCode != 200) {
@@ -313,7 +463,7 @@ Q1:''';
         }
 
         final raw = jsonDecode(response.body)['choices']?[0]?['message']
-                ?['content']
+                    ?['content']
                 ?.toString() ??
             '';
         if (raw.isNotEmpty) {
@@ -331,10 +481,27 @@ Q1:''';
     if (text.endsWith('?')) return true;
     final lower = text.toLowerCase();
     const interrogatives = [
-      "qu'est", 'quel ', 'quelle ', 'quels ', 'quelles ',
-      'comment ', 'pourquoi ', 'quand ', 'où ', 'qui ',
-      'combien ', 'est-ce que', 'y a-t-il', 'que ', 'quoi ',
-      'what ', 'who ', 'where ', 'when ', 'why ', 'how ',
+      "qu'est",
+      'quel ',
+      'quelle ',
+      'quels ',
+      'quelles ',
+      'comment ',
+      'pourquoi ',
+      'quand ',
+      'où ',
+      'qui ',
+      'combien ',
+      'est-ce que',
+      'y a-t-il',
+      'que ',
+      'quoi ',
+      'what ',
+      'who ',
+      'where ',
+      'when ',
+      'why ',
+      'how ',
     ];
     return interrogatives.any((w) => lower.startsWith(w));
   }
@@ -392,12 +559,15 @@ JSON : {
       final start = raw.indexOf('{');
       final end = raw.lastIndexOf('}') + 1;
       if (start == -1 || end <= start) return null;
-      final parsed = jsonDecode(raw.substring(start, end)) as Map<String, dynamic>;
-      if (!parsed.containsKey('question') || !parsed.containsKey('source')) return null;
-      
+      final parsed =
+          jsonDecode(raw.substring(start, end)) as Map<String, dynamic>;
+      if (!parsed.containsKey('question') || !parsed.containsKey('source'))
+        return null;
+
       final answer = parsed['answer']?.toString().trim() ?? '';
-      if (answer.toLowerCase() == "non trouvé" || answer == input.trim()) return null;
-      
+      if (answer.toLowerCase() == "non trouvé" || answer == input.trim())
+        return null;
+
       return parsed;
     } catch (e) {
       debugPrint('[KALAN AI] _parseSingleCard : $e');
@@ -409,6 +579,7 @@ JSON : {
   // GÉNÉRATION CONTENU BATAILLE (Qwen uniquement — jamais Gemma)
   // ═══════════════════════════════════════════════════════════════════════════
 
+<<<<<<< HEAD
   /// Contenu de défi hors-ligne (compact pour QR) — templates par matière.
   /// Corrige les QCM avec « Option B » ou options invalides (défis déjà sauvegardés).
   Map<String, dynamic> repairBattleContent(
@@ -683,6 +854,13 @@ JSON : {
   Future<Map<String, dynamic>> generateBattleContent({required String theme}) async {
     if (!await canUseOnlineAI()) {
       return generateBattleContentOffline(theme: theme);
+=======
+  Future<Map<String, dynamic>> generateBattleContent(
+      {required String theme}) async {
+    if (!await canUseOnlineAI()) {
+      throw Exception(
+          'Connexion internet requise pour générer le contenu du défi.');
+>>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
     }
 
     const systemMsg =
@@ -705,29 +883,31 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
     for (final model in _models) {
       try {
         debugPrint('[KALAN AI] Battle via $model');
-        final response = await http.post(
-          Uri.parse(_hfBaseUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $_hfToken',
-          },
-          body: jsonEncode({
-            'model': model,
-            'messages': [
-              {'role': 'system', 'content': systemMsg},
-              {'role': 'user', 'content': userMsg},
-            ],
-            'temperature': 0.3, // Plus bas pour la précision
-            'max_tokens': 3000,
-          }),
-        ).timeout(const Duration(seconds: 50));
+        final response = await http
+            .post(
+              Uri.parse(_hfBaseUrl),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $_hfToken',
+              },
+              body: jsonEncode({
+                'model': model,
+                'messages': [
+                  {'role': 'system', 'content': systemMsg},
+                  {'role': 'user', 'content': userMsg},
+                ],
+                'temperature': 0.3, // Plus bas pour la précision
+                'max_tokens': 3000,
+              }),
+            )
+            .timeout(const Duration(seconds: 50));
 
         if (response.statusCode == 200) {
           final raw = jsonDecode(response.body)['choices']?[0]?['message']
-                  ?['content']
+                      ?['content']
                   ?.toString() ??
               '';
-          
+
           final parsed = _extractJson(raw);
           if (parsed != null && parsed['flashcards'] != null) {
             return _normalizeBattleContent(parsed, theme: theme);
@@ -761,11 +941,16 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
       final e = raw.lastIndexOf(']') + 1;
       if (s == -1 || e <= s) return [];
       final parsed = jsonDecode(raw.substring(s, e)) as List<dynamic>;
-      final cards = parsed.map<Map<String, String>>((item) => {
-            'question': (item['question'] ?? item['q'] ?? '').toString().trim(),
-            'answer': (item['answer'] ?? item['a'] ?? '').toString().trim(),
-          }).where((c) => c['question']!.isNotEmpty && c['answer']!.isNotEmpty).toList();
-      if (cards.isNotEmpty) debugPrint('[KALAN AI] JSON parsé : ${cards.length} cartes');
+      final cards = parsed
+          .map<Map<String, String>>((item) => {
+                'question':
+                    (item['question'] ?? item['q'] ?? '').toString().trim(),
+                'answer': (item['answer'] ?? item['a'] ?? '').toString().trim(),
+              })
+          .where((c) => c['question']!.isNotEmpty && c['answer']!.isNotEmpty)
+          .toList();
+      if (cards.isNotEmpty)
+        debugPrint('[KALAN AI] JSON parsé : ${cards.length} cartes');
       return cards;
     } catch (_) {
       return [];
@@ -777,19 +962,23 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
       final cards = <Map<String, String>>[];
       final qReg = RegExp(
           r'(?:Q\d*|Question\d*)\s*[:：]\s*(.*?)(?=(?:[RA]\d*|Rép\w*\d*|Answer\d*)\s*[:：]|$)',
-          caseSensitive: false, dotAll: true);
+          caseSensitive: false,
+          dotAll: true);
       final aReg = RegExp(
           r'(?:[RA]\d*|Rép\w*\d*|Answer\d*)\s*[:：]\s*(.*?)(?=(?:Q\d*|Question\d*)\s*[:：]|$)',
-          caseSensitive: false, dotAll: true);
+          caseSensitive: false,
+          dotAll: true);
       final qs = qReg.allMatches(raw).toList();
       final as_ = aReg.allMatches(raw).toList();
       final count = qs.length < as_.length ? qs.length : as_.length;
       for (var i = 0; i < count; i++) {
         final q = qs[i].group(1)?.trim() ?? '';
         final a = as_[i].group(1)?.trim() ?? '';
-        if (q.isNotEmpty && a.isNotEmpty) cards.add({'question': q, 'answer': a});
+        if (q.isNotEmpty && a.isNotEmpty)
+          cards.add({'question': q, 'answer': a});
       }
-      if (cards.isNotEmpty) debugPrint('[KALAN AI] Q/R parsé : ${cards.length} cartes');
+      if (cards.isNotEmpty)
+        debugPrint('[KALAN AI] Q/R parsé : ${cards.length} cartes');
       return cards;
     } catch (_) {
       return [];
@@ -836,7 +1025,8 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
 
     // Sécurité : toujours 5 cartes minimum
     while (cards.length < 5) {
-      final snippet = clean.length > 80 ? '${clean.substring(0, 80)}...' : clean;
+      final snippet =
+          clean.length > 80 ? '${clean.substring(0, 80)}...' : clean;
       cards.add({
         'question': 'Point clé ${cards.length + 1} du cours :',
         'answer': snippet,
@@ -851,7 +1041,14 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
     final lower = sentence.toLowerCase();
 
     // 1. Définition : "X est/sont/signifie/désigne Y"
-    const defKw = ['est ', 'sont ', 'signifie ', 'désigne ', 'correspond à ', 'représente '];
+    const defKw = [
+      'est ',
+      'sont ',
+      'signifie ',
+      'désigne ',
+      'correspond à ',
+      'représente '
+    ];
     for (final kw in defKw) {
       final idx = lower.indexOf(kw);
       if (idx > 3 && idx < sentence.length - 8) {
@@ -876,7 +1073,8 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
     }
 
     // 3. Quantité : "Il y a N / X comporte N / N ..."
-    final numMatch = RegExp(r'\b(\d+(?:[.,]\d+)?)\s+(\w+)').firstMatch(sentence);
+    final numMatch =
+        RegExp(r'\b(\d+(?:[.,]\d+)?)\s+(\w+)').firstMatch(sentence);
     if (numMatch != null) {
       final num = numMatch.group(1)!;
       final unit = numMatch.group(2)!;
@@ -887,7 +1085,13 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
     }
 
     // 4. Processus/cause : "pour que", "afin de", "grâce à", "permet de"
-    const processKw = ['permet de ', 'grâce à ', 'afin de ', 'pour que ', 'en raison de '];
+    const processKw = [
+      'permet de ',
+      'grâce à ',
+      'afin de ',
+      'pour que ',
+      'en raison de '
+    ];
     for (final kw in processKw) {
       if (lower.contains(kw)) {
         final idx = lower.indexOf(kw);
@@ -895,8 +1099,10 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
         final after = sentence.substring(idx + kw.length).trim();
         if (before.isNotEmpty && after.isNotEmpty) {
           return {
-            'question': 'Comment / Pourquoi : "${before.length > 50 ? '${before.substring(0, 50)}...' : before}" ?',
-            'answer': after.length > 80 ? '${after.substring(0, 80)}...' : after,
+            'question':
+                'Comment / Pourquoi : "${before.length > 50 ? '${before.substring(0, 50)}...' : before}" ?',
+            'answer':
+                after.length > 80 ? '${after.substring(0, 80)}...' : after,
           };
         }
       }
@@ -911,13 +1117,75 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
 
   String _detectSubjectHeuristic(String text) {
     final t = text.toLowerCase();
-    if (_has(t, ['fraction', 'équation', 'calculer', 'géométrie', 'triangle', 'théorème', 'nombre', 'fonction', 'algèbre', 'dérivée'])) return 'Mathématiques';
-    if (_has(t, ['cellule', 'plante', 'organe', 'adn', 'génétique', 'reproduction', 'chlorophylle', 'mitose', 'espèce'])) return 'SVT';
-    if (_has(t, ['chimie', 'atome', 'molécule', 'force', 'vitesse', 'pesanteur', 'électricité', 'lumière', 'réaction'])) return 'Physique-Chimie';
-    if (_has(t, ['informatique', 'algorithme', 'code', 'programmation', 'variable', 'boucle', 'fonction', 'binaire'])) return 'Informatique';
-    if (_has(t, ['poème', 'conjugaison', 'verbe', 'grammaire', 'orthographe', 'littérature', 'adjectif', 'roman', 'auteur'])) return 'Français';
-    if (_has(t, ['histoire', 'guerre', 'siècle', 'géographie', 'climat', 'carte', 'afrique', 'empire', 'révolution'])) return 'Histoire-Géo';
-    if (_has(t, ['english', 'vocabulary', 'translate', 'pronoun', 'tense', 'grammar', 'verb', 'noun'])) return 'Anglais';
+    if (_has(t, [
+      'fraction',
+      'équation',
+      'calculer',
+      'géométrie',
+      'triangle',
+      'théorème',
+      'nombre',
+      'fonction',
+      'algèbre',
+      'dérivée'
+    ])) return 'Mathématiques';
+    if (_has(t, [
+      'cellule',
+      'plante',
+      'organe',
+      'adn',
+      'génétique',
+      'reproduction',
+      'chlorophylle',
+      'mitose',
+      'espèce',
+      'chimie',
+      'atome',
+      'molécule',
+      'force',
+      'vitesse',
+      'pesanteur',
+      'électricité',
+      'lumière',
+      'réaction',
+      'photosynthèse',
+      'énergie'
+    ])) return 'Sciences';
+    if (_has(t, [
+      'poème',
+      'conjugaison',
+      'verbe',
+      'grammaire',
+      'orthographe',
+      'littérature',
+      'adjectif',
+      'roman',
+      'auteur'
+    ])) return 'Français';
+    if (_has(t, [
+      'histoire',
+      'guerre',
+      'siècle',
+      'géographie',
+      'climat',
+      'carte',
+      'afrique',
+      'empire',
+      'révolution'
+    ])) return 'Histoire-Géo';
+    if (_has(t, [
+      'english',
+      'vocabulary',
+      'translate',
+      'pronoun',
+      'tense',
+      'grammar',
+      'verb',
+      'noun',
+      'arabe',
+      'arabic',
+      'allemand'
+    ])) return 'Langues';
     return 'Autre';
   }
 
@@ -930,5 +1198,7 @@ Utilise les réponses des autres questions comme mauvaises réponses quand c'est
 
   Future<void> unloadModel() async {
     await _gemmaService?.unloadModel();
+    await _qwenService?.dispose();
+    _qwenService = null;
   }
 }

@@ -29,7 +29,7 @@ class GeneratingScreen extends StatefulWidget {
 class _GeneratingScreenState extends State<GeneratingScreen> with TickerProviderStateMixin {
   final LocalAIService _aiService = LocalAIService();
   List<Map<String, String>> _flashcards = [];
-  String _selectedSubject = 'Littérature';
+  String _selectedSubject = 'Autre';
   final String _selectedLevel = 'Général';
 
   late AnimationController _rotationController;
@@ -111,7 +111,7 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
           ],
         ),
         content: const Text(
-          "Tu n'as pas internet. Pour de meilleures fiches, télécharge l'IA locale Gemma (~350 Mo, Wi‑Fi conseillé).\n\n"
+          "Tu n'as pas internet. Pour de meilleures fiches, télécharge l'IA locale Qwen (~986 Mo, Wi‑Fi conseillé).\n\n"
           'Sinon, KALAN créera des fiches simplifiées à partir de ton texte.',
           style: TextStyle(height: 1.45),
         ),
@@ -146,7 +146,7 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
   String _detectSubject(String text) {
     final lowerText = text.toLowerCase();
     
-    // 1. Détection Sciences (Maths, SVT, Physique, Informatique)
+    // 1. Détection Mathématiques
     if (lowerText.contains('fraction') ||
         lowerText.contains('équation') ||
         lowerText.contains('calculer') ||
@@ -155,7 +155,14 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
         lowerText.contains('théorème') ||
         lowerText.contains('nombre') ||
         lowerText.contains('fonction') ||
-        lowerText.contains('cellule') ||
+        lowerText.contains('algèbre') ||
+        lowerText.contains('racine carrée') ||
+        lowerText.contains('pourcentage')) {
+      return 'Mathématiques';
+    }
+
+    // 2. Détection Sciences (SVT + Physique-Chimie)
+    if (lowerText.contains('cellule') ||
         lowerText.contains('plante') ||
         lowerText.contains('corps humain') ||
         lowerText.contains('organe') ||
@@ -169,41 +176,44 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
         lowerText.contains('force') ||
         lowerText.contains('vitesse') ||
         lowerText.contains('pesanteur') ||
-        lowerText.contains('informatique') ||
-        lowerText.contains('ordinateur') ||
-        lowerText.contains('code') ||
-        lowerText.contains('programmation') ||
-        lowerText.contains('algorithme')) {
+        lowerText.contains('photosynthèse') ||
+        lowerText.contains('énergie')) {
       return 'Sciences';
     }
-    
-    // 2. Détection Littérature (Français, poésie)
+
+    // 3. Détection Français (langue + littérature)
     if (lowerText.contains('poème') ||
         lowerText.contains('conjugaison') ||
         lowerText.contains('verbe') ||
         lowerText.contains('grammaire') ||
         lowerText.contains('orthographe') ||
         lowerText.contains('littérature') ||
-        lowerText.contains('adjectif')) {
-      return 'Littérature';
+        lowerText.contains('adjectif') ||
+        lowerText.contains('roman') ||
+        lowerText.contains('auteur')) {
+      return 'Français';
     }
-    
-    // 3. Détection Humanités (Histoire, Géographie)
+
+    // 4. Détection Histoire-Géo
     if (lowerText.contains('histoire') ||
         lowerText.contains('guerre') ||
         lowerText.contains('siècle') ||
         lowerText.contains('géographie') ||
         lowerText.contains('climat') ||
         lowerText.contains('carte') ||
-        lowerText.contains('afrique')) {
-      return 'Humanités';
+        lowerText.contains('afrique') ||
+        lowerText.contains('empire') ||
+        lowerText.contains('colonisation')) {
+      return 'Histoire-Géo';
     }
-    
-    // 4. Détection Langues (Anglais, etc.)
+
+    // 5. Détection Langues (Anglais, Arabe, etc.)
     if (lowerText.contains('english') ||
         lowerText.contains('vocabulary') ||
         lowerText.contains('translate') ||
-        lowerText.contains('pronoun')) {
+        lowerText.contains('pronoun') ||
+        lowerText.contains('arabic') ||
+        lowerText.contains('arabe')) {
       return 'Langues';
     }
     

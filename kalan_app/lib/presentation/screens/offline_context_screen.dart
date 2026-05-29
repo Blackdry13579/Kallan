@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../core/constants/subject_categories.dart';
 import 'generating_screen.dart';
 
 class OfflineContextScreen extends StatefulWidget {
   final String ocrText;
   final String detectedSubject;
+  final String? documentContext;
+  final bool showOfflineBadge;
 
   const OfflineContextScreen({
     super.key,
     required this.ocrText,
     required this.detectedSubject,
+    this.documentContext,
+    this.showOfflineBadge = true,
   });
 
   @override
@@ -21,28 +26,10 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
   final TextEditingController _contextController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
-  static const List<String> _subjects = [
-    'Mathématiques', 'SVT', 'Physique-Chimie', 'Informatique',
-    'Français', 'Histoire-Géo', 'Anglais', 'Autre',
-  ];
-
-  static const Map<String, String> _subjectEmojis = {
-    'Mathématiques': '📐',
-    'SVT': '🌿',
-    'Physique-Chimie': '⚗️',
-    'Informatique': '💻',
-    'Français': '📝',
-    'Histoire-Géo': '🌍',
-    'Anglais': '🗣️',
-    'Autre': '📚',
-  };
-
   @override
   void initState() {
     super.initState();
-    _selectedSubject = _subjects.contains(widget.detectedSubject)
-        ? widget.detectedSubject
-        : 'Autre';
+    _selectedSubject = SubjectCategories.normalize(widget.detectedSubject);
     _focusNode.addListener(() => setState(() {}));
   }
 
@@ -54,15 +41,21 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
   }
 
   void _generate() {
+    final userContext = _contextController.text.trim();
+    final combinedContext = [
+      if (widget.documentContext != null &&
+          widget.documentContext!.trim().isNotEmpty)
+        widget.documentContext!.trim(),
+      if (userContext.isNotEmpty) 'Contexte fourni par l\'élève: $userContext',
+    ].join('\n\n');
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => GeneratingScreen(
           ocrText: widget.ocrText,
           userSubject: _selectedSubject,
-          userContext: _contextController.text.trim().isEmpty
-              ? null
-              : _contextController.text.trim(),
+          userContext: combinedContext.isEmpty ? null : combinedContext,
         ),
       ),
     );
@@ -72,7 +65,8 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
   Widget build(BuildContext context) {
     return Theme(
       data: Theme.of(context).copyWith(
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(Theme.of(context).textTheme),
+        textTheme:
+            GoogleFonts.plusJakartaSansTextTheme(Theme.of(context).textTheme),
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFFFBF9F4),
@@ -116,33 +110,67 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1A1A1A), size: 22),
+            child: const Icon(Icons.arrow_back_rounded,
+                color: Color(0xFF1A1A1A), size: 22),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Aide l\'IA à mieux comprendre',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
+              widget.showOfflineBadge
+                  ? 'Aide l\'IA à mieux comprendre'
+                  : 'Contexte du document',
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1A1A1A)),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF9800).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
+          if (widget.showOfflineBadge)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF9800).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.wifi_off_rounded,
+                      size: 13, color: Color(0xFFE65100)),
+                  SizedBox(width: 5),
+                  Text(
+                    'Hors ligne',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFE65100)),
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1565C0).withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.picture_as_pdf_rounded,
+                      size: 13, color: Color(0xFF1565C0)),
+                  SizedBox(width: 5),
+                  Text(
+                    'PDF',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1565C0)),
+                  ),
+                ],
+              ),
             ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.wifi_off_rounded, size: 13, color: Color(0xFFE65100)),
-                SizedBox(width: 5),
-                Text(
-                  'Hors ligne',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFE65100)),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -154,32 +182,43 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFF9800).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFF9800).withValues(alpha: 0.25), width: 1),
+        border: Border.all(
+            color: const Color(0xFFFF9800).withValues(alpha: 0.25), width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: const Color(0xFFFF9800).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.lightbulb_rounded, color: Color(0xFFE65100), size: 20),
+            child: const Icon(Icons.lightbulb_rounded,
+                color: Color(0xFFE65100), size: 20),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Sans internet, le contexte améliore tout',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
+                  widget.showOfflineBadge
+                      ? 'Sans internet, le contexte améliore tout'
+                      : 'Précise le sujet avant la génération',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1A1A1A)),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Indique la matière et décris brièvement ton sujet — l\'IA locale Gemma génèrera des fiches bien plus pertinentes.',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF666666), height: 1.5),
+                  widget.showOfflineBadge
+                      ? 'Indique la matière et décris brièvement ton sujet — l\'IA locale génèrera des fiches bien plus pertinentes.'
+                      : 'KALAN a analysé le PDF hors ligne. Ajoute ton contexte pour orienter les flashcards et les questions.',
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF666666), height: 1.5),
                 ),
               ],
             ),
@@ -195,34 +234,46 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
       children: [
         const Text(
           'Matière',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF1A1A1A)),
         ),
         const SizedBox(height: 3),
         const Text(
-          'Quelle est la matière de ce cours ?',
+          'Dans quel domaine placer ce document ?',
           style: TextStyle(fontSize: 12, color: Color(0xFF999999)),
         ),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _subjects.map((subject) {
+          children: SubjectCategories.all.map((subject) {
             final isSelected = _selectedSubject == subject;
-            final emoji = _subjectEmojis[subject] ?? '📚';
+            final emoji = SubjectCategories.emojis[subject] ?? '📚';
             return GestureDetector(
               onTap: () => setState(() => _selectedSubject = subject),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFF1565C0) : Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF1565C0) : const Color(0xFFE5E1DA),
+                    color: isSelected
+                        ? const Color(0xFF1565C0)
+                        : const Color(0xFFE5E1DA),
                     width: isSelected ? 1.5 : 1,
                   ),
                   boxShadow: isSelected
-                      ? [BoxShadow(color: const Color(0xFF1565C0).withValues(alpha: 0.20), blurRadius: 8, offset: const Offset(0, 2))]
+                      ? [
+                          BoxShadow(
+                              color: const Color(0xFF1565C0)
+                                  .withValues(alpha: 0.20),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2))
+                        ]
                       : [],
                 ),
                 child: Row(
@@ -235,7 +286,8 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: isSelected ? Colors.white : const Color(0xFF444444),
+                        color:
+                            isSelected ? Colors.white : const Color(0xFF444444),
                       ),
                     ),
                   ],
@@ -256,7 +308,10 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
           children: [
             const Text(
               'Contexte',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1A1A1A)),
             ),
             const SizedBox(width: 8),
             Container(
@@ -267,14 +322,17 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
               ),
               child: const Text(
                 'Facultatif',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF2E7D32)),
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF2E7D32)),
               ),
             ),
           ],
         ),
         const SizedBox(height: 3),
         const Text(
-          'En quelques lignes, de quoi parle ce texte ?',
+          'En quelques lignes, de quoi parle ce PDF ?',
           style: TextStyle(fontSize: 12, color: Color(0xFF999999)),
         ),
         const SizedBox(height: 12),
@@ -284,26 +342,52 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _focusNode.hasFocus ? const Color(0xFF1565C0) : const Color(0xFFE5E1DA),
+              color: _focusNode.hasFocus
+                  ? const Color(0xFF1565C0)
+                  : const Color(0xFFE5E1DA),
               width: _focusNode.hasFocus ? 1.5 : 1,
             ),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8)],
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02), blurRadius: 8)
+            ],
           ),
           child: TextField(
             controller: _contextController,
             focusNode: _focusNode,
             maxLines: 4,
             minLines: 3,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A1A), height: 1.5),
+            style: const TextStyle(
+                fontSize: 14, color: Color(0xFF1A1A1A), height: 1.5),
             decoration: const InputDecoration(
-              hintText: 'Ex : Cours de SVT sur la photosynthèse, niveau lycée. Le texte explique le rôle des chloroplastes dans la production d\'énergie...',
-              hintStyle: TextStyle(fontSize: 12, color: Color(0xFFBBBBBB), height: 1.5),
+              hintText:
+                  'Ex : Cours de SVT sur l\'oxygénation des plantes. Le document explique les échanges gazeux, les stomates et la photosynthèse...',
+              hintStyle: TextStyle(
+                  fontSize: 12, color: Color(0xFFBBBBBB), height: 1.5),
               border: InputBorder.none,
               contentPadding: EdgeInsets.all(16),
             ),
           ),
         ),
         const SizedBox(height: 10),
+        if (widget.documentContext != null &&
+            widget.documentContext!.trim().isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE3F2FD),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBBDEFB)),
+            ),
+            child: Text(
+              widget.documentContext!,
+              style: const TextStyle(
+                  fontSize: 11, color: Color(0xFF185FA5), height: 1.45),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         // Preview du texte scanné
         Container(
           padding: const EdgeInsets.all(12),
@@ -315,14 +399,19 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.document_scanner_rounded, size: 14, color: Color(0xFFAAAAAA)),
+              const Icon(Icons.document_scanner_rounded,
+                  size: 14, color: Color(0xFFAAAAAA)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   widget.ocrText.length > 120
                       ? '${widget.ocrText.substring(0, 120).trim()}...'
                       : widget.ocrText,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF888888), height: 1.4, fontStyle: FontStyle.italic),
+                  style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF888888),
+                      height: 1.4,
+                      fontStyle: FontStyle.italic),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -344,7 +433,8 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
           backgroundColor: const Color(0xFF2D6A2D),
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,

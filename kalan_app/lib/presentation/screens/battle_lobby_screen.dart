@@ -1299,7 +1299,7 @@ class _RecapCard extends StatelessWidget {
           const Spacer(),
           _PlayerBadge(
             pseudo: oppName, label: 'Adversaire',
-            onClear: opponent['uuid'] != 'ai-kalan-uuid' ? onClear : null,
+            onClear: opponent['uuid'] != '00000000-0000-0000-0000-000000000000' ? onClear : null,
           ),
         ]),
         const SizedBox(height: 18),

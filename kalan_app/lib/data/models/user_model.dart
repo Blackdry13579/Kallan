@@ -16,12 +16,14 @@ class UserModel {
   final int? avatarId;
   final DateTime? lastActive;
   final DateTime createdAt;
+  final String? email;
   final String? pinHash;
 
   UserModel({
     this.id,
     required this.uuid,
     required this.pseudo,
+    this.email,
     this.firstName,
     this.lastName,
     this.schoolId,
@@ -50,6 +52,7 @@ class UserModel {
         classId: _asIntOrNull(map['class_id']),
         className: map['class_name'] ?? map['class'],
         language: map['language'] ?? 'fr',
+<<<<<<< HEAD
         points: _asInt(map['points']),
         level: _asInt(map['level'], 1),
         streak: _asInt(map['streak']),
@@ -58,6 +61,17 @@ class UserModel {
         lastActive: _parseDateTime(map['last_active']),
         createdAt: _parseDateTime(map['created_at']) ?? DateTime.now(),
         pinHash: map['pin_hash'] as String?,
+=======
+        points: map['points'] ?? 0,
+        level: map['level'] ?? 1,
+        streak: map['streak'] ?? 0,
+        isGuest: (map['is_guest'] ?? 0) == 1,
+        avatarId: map['avatar_id'],
+        lastActive: map['last_active'] != null ? DateTime.tryParse(map['last_active']) : null,
+        email: map['email'],
+        createdAt: DateTime.parse(map['created_at']),
+        pinHash: map['pin_hash'],
+>>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
       );
 
   /// SQLite row id (int). Supabase may expose a UUID in `id` — ignore it here.
@@ -106,6 +120,7 @@ class UserModel {
         'id': id,
         'uuid': uuid,
         'pseudo': pseudo,
+        'email': email,
         'language': language,
         'points': points,
         'level': level,
@@ -120,6 +135,7 @@ class UserModel {
   Map<String, dynamic> toSupabaseJson() => {
         'uuid': uuid,
         'pseudo': pseudo,
+        'email': email,
         'language': language,
         'points': points,
         'level': level,

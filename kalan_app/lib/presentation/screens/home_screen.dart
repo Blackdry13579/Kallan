@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../ai/model_downloader.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/ocr_service.dart';
+import '../../services/pdf_service.dart';
 import '../../services/presence_service.dart';
 import '../../services/battle_invite_service.dart';
 import '../blocs/deck/deck_bloc.dart';
@@ -27,6 +27,7 @@ import 'leaderboard_screen.dart';
 import 'create_deck_screen.dart';
 import 'camera_ocr_screen.dart';
 import 'generating_screen.dart';
+import 'offline_context_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -101,7 +102,7 @@ class HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              'Pour générer des flashcards sans connexion internet, installe le modèle IA (~750 Mo) sur ton téléphone.\n\nLe téléchargement se fera en arrière-plan — tu pourras continuer à utiliser KALAN normalement.',
+              'Pour générer des flashcards sans connexion internet, installe le modèle IA Qwen2.5 (~986 Mo) sur ton téléphone.\n\nLe téléchargement se fera en arrière-plan — tu pourras continuer à utiliser KALAN normalement.',
               textAlign: TextAlign.center,
               style:
                   TextStyle(fontSize: 13, color: Colors.black54, height: 1.55),
@@ -418,7 +419,7 @@ class HomeScreenState extends State<HomeScreen> {
               icon: Icons.picture_as_pdf_rounded,
               color: const Color(0xFFE24B4A),
               title: 'Importer un PDF',
-              subtitle: 'Générer depuis un document',
+              subtitle: 'Max 5 pages · Génère des fiches auto',
               onTap: () async {
                 Navigator.pop(ctx);
                 await _pickAndProcessPDF();
@@ -458,27 +459,45 @@ class HomeScreenState extends State<HomeScreen> {
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      // Syncfusion extrait le texte directement depuis le PDF (pas de MLKit)
       final bytes = await File(result.files.single.path!).readAsBytes();
-      final doc = PdfDocument(inputBytes: bytes);
-      final text = PdfTextExtractor(doc).extractText();
-      doc.dispose();
+      final analysis = await PdfService().analyze(bytes: bytes);
 
       if (!mounted) return;
       Navigator.pop(context);
       dialogShown = false;
 
-      if (text.trim().isEmpty) {
+      if (analysis.text.trim().isEmpty) {
+        final detail = analysis.likelyScanned
+            ? 'Ce PDF semble être scanné ou composé d\'images. On ajoutera l\'OCR PDF dans l\'étape suivante.'
+            : 'Aucun texte exploitable trouvé dans ce PDF.';
         ScaffoldMessenger.of(context).showSnackBar(
+<<<<<<< HEAD
           const SnackBar(
               content: Text(
                   'Aucun texte trouvé dans ce PDF (PDF scanné non supporté)')),
+=======
+          SnackBar(content: Text(detail), duration: const Duration(seconds: 5)),
+>>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
         );
         return;
       }
 
+<<<<<<< HEAD
       Navigator.push(context,
           MaterialPageRoute(builder: (_) => GeneratingScreen(ocrText: text)));
+=======
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OfflineContextScreen(
+            ocrText: analysis.text,
+            detectedSubject: _detectSubjectFromPdfAnalysis(analysis),
+            documentContext: analysis.aiContext,
+            showOfflineBadge: false,
+          ),
+        ),
+      );
+>>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
     } catch (e) {
       if (mounted) {
         if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
@@ -487,6 +506,39 @@ class HomeScreenState extends State<HomeScreen> {
         );
       }
     }
+  }
+
+  String _detectSubjectFromPdfAnalysis(PdfAnalysis analysis) {
+    final lower = analysis.text.toLowerCase();
+    if (lower.contains('plante') ||
+        lower.contains('oxygène') ||
+        lower.contains('oxygen') ||
+        lower.contains('photosynthèse') ||
+        lower.contains('cellule') ||
+        lower.contains('molécule') ||
+        lower.contains('équation') ||
+        lower.contains('force') ||
+        lower.contains('vitesse')) {
+      return 'Sciences';
+    }
+    if (lower.contains('poème') ||
+        lower.contains('roman') ||
+        lower.contains('grammaire') ||
+        lower.contains('auteur')) {
+      return 'Français';
+    }
+    if (lower.contains('histoire') ||
+        lower.contains('géographie') ||
+        lower.contains('empire') ||
+        lower.contains('climat')) {
+      return 'Histoire-Géo';
+    }
+    if (analysis.detectedLanguage == 'anglais' ||
+        lower.contains('english') ||
+        lower.contains('vocabulary')) {
+      return 'Langues';
+    }
+    return 'Autre';
   }
 
   Future<void> _pickAndProcessImage() async {
@@ -618,7 +670,11 @@ class HomeScreenState extends State<HomeScreen> {
               duration: const Duration(milliseconds: 200),
               width: isSelected ? 5 : 0,
               height: isSelected ? 5 : 0,
+<<<<<<< HEAD
               decoration: const BoxDecoration(
+=======
+              decoration: BoxDecoration(
+>>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
                   color: AppColors.primary, shape: BoxShape.circle),
             ),
           ],
