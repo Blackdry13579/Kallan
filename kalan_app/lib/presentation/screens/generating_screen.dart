@@ -314,11 +314,19 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
       return;
     }
 
-    // Titre automatique basé sur le début du texte
-    String title = 'Nouveau Deck';
+    // Titre automatique : première ligne significative (ignore les séparateurs "--- Page N ---")
+    String title = 'Nouvelle Fiche';
     if (widget.ocrText.isNotEmpty) {
-      title = widget.ocrText.split('\n').first.trim();
-      if (title.length > 35) title = '${title.substring(0, 35)}...';
+      final pageHeaderRe = RegExp(r'^-{2,}\s*[Pp]age\s*\d+', caseSensitive: false);
+      final lines = widget.ocrText
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty && !pageHeaderRe.hasMatch(l))
+          .toList();
+      if (lines.isNotEmpty) {
+        title = lines.first;
+        if (title.length > 35) title = '${title.substring(0, 35)}...';
+      }
     }
 
     final String deckUuid = _uuid.v4();
