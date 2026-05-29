@@ -2,7 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/battle_model.dart';
 
 class BattleService {
-  final SupabaseClient _client = Supabase.instance.client;
+  SupabaseClient get _client => Supabase.instance.client;
 
   Future<Battle> createBattle({
     required String inviterId,

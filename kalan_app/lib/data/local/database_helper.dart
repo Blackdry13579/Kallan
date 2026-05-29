@@ -19,7 +19,7 @@ class DatabaseHelper {
     final path = join(dbPath, filePath);
     return await openDatabase(
       path,
-      version: 6,
+      version: 9,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -28,10 +28,12 @@ class DatabaseHelper {
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       try {
-        await db.execute('ALTER TABLE leaderboard_entries ADD COLUMN pseudo TEXT');
+        await db
+            .execute('ALTER TABLE leaderboard_entries ADD COLUMN pseudo TEXT');
       } catch (_) {}
       try {
-        await db.execute('ALTER TABLE leaderboard_entries ADD COLUMN avatar TEXT');
+        await db
+            .execute('ALTER TABLE leaderboard_entries ADD COLUMN avatar TEXT');
       } catch (_) {}
     }
     if (oldVersion < 3) {
@@ -44,10 +46,12 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       try {
-        await db.execute('ALTER TABLE flashcards ADD COLUMN interval INTEGER DEFAULT 0');
+        await db.execute(
+            'ALTER TABLE flashcards ADD COLUMN interval INTEGER DEFAULT 0');
       } catch (_) {}
       try {
-        await db.execute('ALTER TABLE flashcards ADD COLUMN repetitions INTEGER DEFAULT 0');
+        await db.execute(
+            'ALTER TABLE flashcards ADD COLUMN repetitions INTEGER DEFAULT 0');
       } catch (_) {}
     }
     if (oldVersion < 6) {
@@ -59,14 +63,51 @@ class DatabaseHelper {
       // S'assurer que les colonnes flashcards existent pour ceux qui auraient sauté la v4
       final columns = await db.rawQuery('PRAGMA table_info(flashcards)');
       if (!columns.any((c) => c['name'] == 'interval')) {
-        try { await db.execute('ALTER TABLE flashcards ADD COLUMN interval INTEGER DEFAULT 0'); } catch (_) {}
+        try {
+          await db.execute(
+              'ALTER TABLE flashcards ADD COLUMN interval INTEGER DEFAULT 0');
+        } catch (_) {}
       }
       if (!columns.any((c) => c['name'] == 'repetitions')) {
-        try { await db.execute('ALTER TABLE flashcards ADD COLUMN repetitions INTEGER DEFAULT 0'); } catch (_) {}
+        try {
+          await db.execute(
+              'ALTER TABLE flashcards ADD COLUMN repetitions INTEGER DEFAULT 0');
+        } catch (_) {}
       }
 
       try {
-        await db.execute("UPDATE subjects SET color = 0xFF2196F3, bg_color = 0xFFE3F2FD WHERE id = 'Autre'");
+        await db.execute(
+            "UPDATE subjects SET color = 0xFF2196F3, bg_color = 0xFFE3F2FD WHERE id = 'Autre'");
+      } catch (_) {}
+    }
+    if (oldVersion < 7) {
+      // Migration vers le système 6 catégories (collège + lycée Burkina Faso)
+      try {
+        await db.rawUpdate(
+            "UPDATE decks SET subject = 'Français' WHERE subject = 'Littérature'");
+      } catch (_) {}
+      try {
+        await db.rawUpdate(
+            "UPDATE decks SET subject = 'Histoire-Géo' WHERE subject = 'Humanités'");
+      } catch (_) {}
+      try {
+        await db.rawUpdate(
+            "UPDATE decks SET subject = 'Autre' WHERE subject = 'Informatique'");
+      } catch (_) {}
+      try {
+        await db.rawDelete(
+            "DELETE FROM subjects WHERE id IN ('Littérature', 'Humanités', 'Informatique')");
+      } catch (_) {}
+    }
+    if (oldVersion < 8) {
+      try {
+        await db.execute(
+            'ALTER TABLE quiz_results ADD COLUMN xp_gained INTEGER DEFAULT 0');
+      } catch (_) {}
+    }
+    if (oldVersion < 9) {
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN email TEXT');
       } catch (_) {}
     }
   }
@@ -77,6 +118,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         uuid TEXT UNIQUE NOT NULL,
         pseudo TEXT NOT NULL,
+        email TEXT,
         first_name TEXT,
         last_name TEXT,
         school_id INTEGER,
@@ -147,6 +189,7 @@ class DatabaseHelper {
         score INTEGER NOT NULL,
         total INTEGER NOT NULL,
         duration_seconds INTEGER DEFAULT 0,
+        xp_gained INTEGER DEFAULT 0,
         is_synced INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
@@ -240,7 +283,9 @@ class DatabaseHelper {
 
   Future<void> _seedDefaultData(Database db) async {
     // Check if badges are empty
-    final badgesCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM badges')) ?? 0;
+    final badgesCount = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM badges')) ??
+        0;
     if (badgesCount == 0) {
       final defaultBadges = [
         {
@@ -248,7 +293,8 @@ class DatabaseHelper {
           'label': 'L\'Explorateur',
           'description': 'Explorer 10 fiches',
           'category': 'apprentissage',
-          'image_path': 'humanites/ideogram-v3.0_BADGE_Taama_—_L_Explorateur_du_Monde_—_Catégorie_Humanités_Niveau_Découvr-0.jpg',
+          'image_path':
+              'humanites/ideogram-v3.0_BADGE_Taama_—_L_Explorateur_du_Monde_—_Catégorie_Humanités_Niveau_Découvr-0.jpg',
           'color': 0xFF2D6A2D,
           'emoji': '🌍'
         },
@@ -257,7 +303,8 @@ class DatabaseHelper {
           'label': 'Le Polyglotte',
           'description': 'Maîtriser 2 langues',
           'category': 'langue',
-          'image_path': 'langue/ideogram-v3.0_BADGE_Jàmbaar_—_Le_Polyglotte_Courageux_—_Catégorie_Langues_Niveau_Découv-0.jpg',
+          'image_path':
+              'langue/ideogram-v3.0_BADGE_Jàmbaar_—_Le_Polyglotte_Courageux_—_Catégorie_Langues_Niveau_Découv-0.jpg',
           'color': 0xFF185FA5,
           'emoji': '🗣️'
         },
@@ -266,7 +313,8 @@ class DatabaseHelper {
           'label': 'L\'Apprenti Chercheur',
           'description': 'Première recherche',
           'category': 'sciences',
-          'image_path': 'sciences/ideogram-v3.0_BADGE_Kalan-So_—_L_Apprenti_Chercheur_—_Catégorie_Sciences_Niveau_Découvre-0 (1).jpg',
+          'image_path':
+              'sciences/ideogram-v3.0_BADGE_Kalan-So_—_L_Apprenti_Chercheur_—_Catégorie_Sciences_Niveau_Découvre-0 (1).jpg',
           'color': 0xFF6A2D9F,
           'emoji': '🧪'
         },
@@ -275,7 +323,8 @@ class DatabaseHelper {
           'label': 'La Plume Légère',
           'description': 'Rédiger 5 textes',
           'category': 'litterature',
-          'image_path': 'litterature/ideogram-v3.0_BADGE_Soro-Foli_—_La_Plume_Légère_—_Catégorie_Littérature_Niveau_Découv-0.jpg',
+          'image_path':
+              'litterature/ideogram-v3.0_BADGE_Soro-Foli_—_La_Plume_Légère_—_Catégorie_Littérature_Niveau_Découv-0.jpg',
           'color': 0xFFBE123C,
           'emoji': '🎭'
         },
@@ -284,7 +333,8 @@ class DatabaseHelper {
           'label': 'Le Philosophe',
           'description': 'Réussir un débat',
           'category': 'apprentissage',
-          'image_path': 'humanites/ideogram-v3.0_BADGE_Bɩŋ-Wɩɩga_—_Le_Philosophe_—_Catégorie_Humanités_Niveau_Maître_B-0.jpg',
+          'image_path':
+              'humanites/ideogram-v3.0_BADGE_Bɩŋ-Wɩɩga_—_Le_Philosophe_—_Catégorie_Humanités_Niveau_Maître_B-0.jpg',
           'color': 0xFF854F0B,
           'emoji': '📜'
         },
@@ -299,52 +349,105 @@ class DatabaseHelper {
         },
       ];
       for (var b in defaultBadges) {
-        await db.insert('badges', b, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert('badges', b,
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
     }
 
     // Assurer que le badge "pousse" est toujours présent
-    await db.insert('badges', {
-      'id': 'pousse',
-      'label': 'La Jeune Pousse',
-      'description': 'Passer son premier niveau',
-      'category': 'apprentissage',
-      'image_path': 'humanites/ideogram-v3.0_BADGE_Pousse_kalan.jpg',
-      'color': 0xFF2D6A2D,
-      'emoji': '🌱'
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'badges',
+        {
+          'id': 'pousse',
+          'label': 'La Jeune Pousse',
+          'description': 'Passer son premier niveau',
+          'category': 'apprentissage',
+          'image_path': 'humanites/ideogram-v3.0_BADGE_Pousse_kalan.jpg',
+          'color': 0xFF2D6A2D,
+          'emoji': '🌱'
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
 
     // Migration des matières : conversion de l'ancien système granulaire
-    // vers le nouveau système généralisé (Sciences, Langues, Littérature, Humanités, Autre).
-    final oldSubjectsCheck = Sqflite.firstIntValue(
-      await db.rawQuery("SELECT COUNT(*) FROM subjects WHERE id IN ('Mathématiques', 'SVT', 'Français', 'Anglais', 'Histoire-Géo')")
-    ) ?? 0;
+    // vers le système 6 catégories (collège + lycée Burkina Faso).
+    final oldSubjectsCheck = Sqflite.firstIntValue(await db.rawQuery(
+            "SELECT COUNT(*) FROM subjects WHERE id IN ('SVT', 'Anglais', 'Histoire-Géo', 'Physique-Chimie')")) ??
+        0;
 
     if (oldSubjectsCheck > 0) {
-      // 1. Mettre à jour les decks locaux vers les nouvelles catégories
-      await db.rawUpdate("UPDATE decks SET subject = 'Sciences' WHERE subject IN ('Mathématiques', 'SVT', 'Physique-Chimie', 'Informatique')");
-      await db.rawUpdate("UPDATE decks SET subject = 'Langues' WHERE subject IN ('Anglais')");
-      await db.rawUpdate("UPDATE decks SET subject = 'Littérature' WHERE subject IN ('Français')");
-      await db.rawUpdate("UPDATE decks SET subject = 'Humanités' WHERE subject IN ('Histoire-Géo')");
-      // Toutes les autres matières non reconnues passent en 'Autre'
-      await db.rawUpdate("UPDATE decks SET subject = 'Autre' WHERE subject NOT IN ('Sciences', 'Langues', 'Littérature', 'Humanités', 'Autre')");
-
-      // 2. Vider l'ancienne table des matières
+      await db.rawUpdate(
+          "UPDATE decks SET subject = 'Sciences' WHERE subject IN ('SVT', 'Physique-Chimie')");
+      await db.rawUpdate(
+          "UPDATE decks SET subject = 'Langues' WHERE subject = 'Anglais'");
+      await db.rawUpdate(
+          "UPDATE decks SET subject = 'Français' WHERE subject IN ('Français_old', 'Littérature')");
+      await db.rawUpdate(
+          "UPDATE decks SET subject = 'Histoire-Géo' WHERE subject IN ('Histoire-Géo_old', 'Humanités')");
+      await db.rawUpdate(
+          "UPDATE decks SET subject = 'Autre' WHERE subject = 'Informatique'");
+      await db.rawUpdate(
+          "UPDATE decks SET subject = 'Autre' WHERE subject NOT IN ('Mathématiques', 'Sciences', 'Français', 'Histoire-Géo', 'Langues', 'Autre')");
       await db.execute("DELETE FROM subjects");
     }
 
-    // Seed les 5 nouvelles matières si la table est vide (première install ou suite à la suppression ci-dessus)
-    final subjectsCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM subjects')) ?? 0;
+    final defaultSubjects = [
+      {
+        'id': 'Mathématiques',
+        'label': 'Mathématiques',
+        'color': 0xFF6A2D9F,
+        'bg_color': 0xFFEDE9FE,
+        'icon_code': 0xea5f
+      }, // calculate
+      {
+        'id': 'Sciences',
+        'label': 'Sciences',
+        'color': 0xFF009688,
+        'bg_color': 0xFFE0F2F1,
+        'icon_code': 0xf0178
+      }, // science
+      {
+        'id': 'Français',
+        'label': 'Français',
+        'color': 0xFFB00020,
+        'bg_color': 0xFFFDECEE,
+        'icon_code': 0xf05a1
+      }, // menu_book
+      {
+        'id': 'Histoire-Géo',
+        'label': 'Histoire-Géo',
+        'color': 0xFF854F0B,
+        'bg_color': 0xFFFAEEDA,
+        'icon_code': 0xe80b
+      }, // history
+      {
+        'id': 'Langues',
+        'label': 'Langues',
+        'color': 0xFFE07B39,
+        'bg_color': 0xFFFCEFE6,
+        'icon_code': 0xe69e
+      }, // translate
+      {
+        'id': 'Autre',
+        'label': 'Autre',
+        'color': 0xFF2196F3,
+        'bg_color': 0xFFE3F2FD,
+        'icon_code': 0xe87d
+      }, // extension
+    ];
+
+    // Seed les matières si la table est vide (première install ou suite à la suppression ci-dessus)
+    final subjectsCount = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM subjects')) ??
+        0;
     if (subjectsCount == 0) {
-      final defaultSubjects = [
-        {'id': 'Sciences', 'label': 'Sciences', 'color': 0xFF009688, 'bg_color': 0xFFE0F2F1, 'icon_code': 0xf0178}, // science
-        {'id': 'Langues', 'label': 'Langues', 'color': 0xFFE07B39, 'bg_color': 0xFFFCEFE6, 'icon_code': 0xe69e}, // translate
-        {'id': 'Littérature', 'label': 'Littérature', 'color': 0xFFB00020, 'bg_color': 0xFFFDECEE, 'icon_code': 0xf05a1}, // menu_book
-        {'id': 'Humanités', 'label': 'Humanités', 'color': 0xFF854F0B, 'bg_color': 0xFFFAEEDA, 'icon_code': 0xe4d0}, // psychology
-        {'id': 'Autre', 'label': 'Autre', 'color': 0xFF2196F3, 'bg_color': 0xFFE3F2FD, 'icon_code': 0xe87d}, // extension
-      ];
       for (var s in defaultSubjects) {
-        await db.insert('subjects', s, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert('subjects', s,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    } else {
+      for (var s in defaultSubjects) {
+        await db.insert('subjects', s,
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       }
     }
   }
@@ -362,12 +465,14 @@ class DatabaseHelper {
 
   Future<int> insertDeck(Map<String, dynamic> deckData) async {
     final db = await instance.database;
-    return await db.insert('decks', deckData, conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert('decks', deckData,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<int> insertFlashcard(Map<String, dynamic> cardData) async {
     final db = await instance.database;
-    return await db.insert('flashcards', cardData, conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert('flashcards', cardData,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> insertDeckWithCards({
@@ -378,7 +483,7 @@ class DatabaseHelper {
   }) async {
     final db = await instance.database;
     final String deckUuid = 'shared-${DateTime.now().millisecondsSinceEpoch}';
-    
+
     await db.insert('decks', {
       'uuid': deckUuid,
       'user_id': 'guest',
@@ -406,32 +511,34 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getFlashcards(String deckUuid) async {
     final db = await instance.database;
-    return await db.query('flashcards', where: 'deck_id = ?', whereArgs: [deckUuid]);
+    return await db
+        .query('flashcards', where: 'deck_id = ?', whereArgs: [deckUuid]);
   }
 
   Future<Map<String, dynamic>> getUserStats(String userId) async {
     final db = await instance.database;
-    
+
     final deckCount = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM decks WHERE user_id = ?', [userId]
-    )) ?? 0;
+            'SELECT COUNT(*) FROM decks WHERE user_id = ?', [userId])) ??
+        0;
 
     final flashcardCount = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM flashcards WHERE deck_id IN (SELECT uuid FROM decks WHERE user_id = ?)', [userId]
-    )) ?? 0;
+            'SELECT COUNT(*) FROM flashcards WHERE deck_id IN (SELECT uuid FROM decks WHERE user_id = ?)',
+            [userId])) ??
+        0;
 
     final quizCount = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM quiz_results WHERE user_id = ?', [userId]
-    )) ?? 0;
+            'SELECT COUNT(*) FROM quiz_results WHERE user_id = ?', [userId])) ??
+        0;
 
     final avgScoreResult = await db.rawQuery(
-      'SELECT AVG(CAST(score AS FLOAT) / total) as avg FROM quiz_results WHERE user_id = ?', [userId]
-    );
+        'SELECT AVG(CAST(score AS FLOAT) / total) as avg FROM quiz_results WHERE user_id = ?',
+        [userId]);
     final avgScore = (avgScoreResult.first['avg'] as double?) ?? 0.0;
 
     final badgeCount = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM user_badges WHERE user_id = ?', [userId]
-    )) ?? 0;
+            'SELECT COUNT(*) FROM user_badges WHERE user_id = ?', [userId])) ??
+        0;
 
     return {
       'deckCount': deckCount,
@@ -454,22 +561,23 @@ class DatabaseHelper {
   Future<int> getCardCount(String deckUuid) async {
     final db = await instance.database;
     return Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM flashcards WHERE deck_id = ?', [deckUuid]
-    )) ?? 0;
+            'SELECT COUNT(*) FROM flashcards WHERE deck_id = ?', [deckUuid])) ??
+        0;
   }
 
   Future<String?> getLastReviewDate(String deckUuid) async {
     final db = await instance.database;
     final result = await db.rawQuery(
-      'SELECT MAX(created_at) as last_date FROM quiz_results WHERE deck_id = ? OR deck_id IN (SELECT id FROM decks WHERE uuid = ?)', 
-      [deckUuid, deckUuid]
-    );
+        'SELECT MAX(created_at) as last_date FROM quiz_results WHERE deck_id = ? OR deck_id IN (SELECT id FROM decks WHERE uuid = ?)',
+        [deckUuid, deckUuid]);
     return result.first['last_date'] as String?;
   }
 
   Future<void> _ensureTablesAndSeed(Database db) async {
-    await db.execute('CREATE TABLE IF NOT EXISTS subjects (id TEXT PRIMARY KEY, label TEXT NOT NULL, color INTEGER NOT NULL, bg_color INTEGER NOT NULL, icon_code INTEGER NOT NULL)');
-    await db.execute('CREATE TABLE IF NOT EXISTS badges (id TEXT PRIMARY KEY, label TEXT NOT NULL, description TEXT, category TEXT, image_path TEXT, color INTEGER NOT NULL, emoji TEXT NOT NULL)');
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS subjects (id TEXT PRIMARY KEY, label TEXT NOT NULL, color INTEGER NOT NULL, bg_color INTEGER NOT NULL, icon_code INTEGER NOT NULL)');
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS badges (id TEXT PRIMARY KEY, label TEXT NOT NULL, description TEXT, category TEXT, image_path TEXT, color INTEGER NOT NULL, emoji TEXT NOT NULL)');
     await db.execute('''
       CREATE TABLE IF NOT EXISTS sync_queue (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -481,7 +589,7 @@ class DatabaseHelper {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     ''');
-    
+
     await db.execute('''
       CREATE TABLE IF NOT EXISTS notifications (
         id TEXT PRIMARY KEY,
@@ -493,18 +601,19 @@ class DatabaseHelper {
         created_at TEXT NOT NULL
       )
     ''');
-    
+
     // Les colonnes is_synced sont déjà incluses dans le CREATE TABLE de la version 3.
     // Cette section est conservée uniquement pour la compatibilité avec d'anciennes installations.
     // On utilise PRAGMA table_info pour vérifier l'existence avant d'ALTER.
-    
+
     final tablesToCheck = ['decks', 'flashcards', 'quiz_results'];
     for (var table in tablesToCheck) {
       final columns = await db.rawQuery('PRAGMA table_info($table)');
       final hasIsSynced = columns.any((c) => c['name'] == 'is_synced');
       if (!hasIsSynced) {
         try {
-          await db.execute('ALTER TABLE $table ADD COLUMN is_synced INTEGER DEFAULT 0');
+          await db.execute(
+              'ALTER TABLE $table ADD COLUMN is_synced INTEGER DEFAULT 0');
         } catch (_) {}
       }
     }
@@ -523,6 +632,7 @@ class DatabaseHelper {
     await _ensureTablesAndSeed(db);
     return await db.query('subjects');
   }
+
   Future<List<Map<String, dynamic>>> getRecentActivity(String userId) async {
     final db = await instance.database;
     // Returns recent decks with their card count
@@ -549,7 +659,8 @@ class DatabaseHelper {
 
   Future<void> insertNotification(Map<String, dynamic> notification) async {
     final db = await instance.database;
-    await db.insert('notifications', notification, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('notifications', notification,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getNotifications(String userId) async {
@@ -561,7 +672,7 @@ class DatabaseHelper {
       whereArgs: [userId],
       orderBy: 'created_at DESC',
     );
-    
+
     if (results.isEmpty) {
       final now = DateTime.now();
       final notifications = [
@@ -570,22 +681,27 @@ class DatabaseHelper {
           'user_id': userId,
           'type': 'review',
           'title': 'Bienvenue sur KALAN ! 🎉',
-          'message': 'Commence par scanner un cours ou importer une photo pour générer tes premières fiches.',
+          'message':
+              'Commence par scanner un cours ou importer une photo pour générer tes premières fiches.',
           'is_read': 0,
-          'created_at': now.subtract(const Duration(minutes: 5)).toIso8601String(),
+          'created_at':
+              now.subtract(const Duration(minutes: 5)).toIso8601String(),
         },
         {
           'id': 'welcome-2',
           'user_id': userId,
           'type': 'badge',
           'title': 'Objectif Champion ! 🏆',
-          'message': 'Révise chaque jour pour débloquer de nouveaux badges africains prestigieux.',
+          'message':
+              'Révise chaque jour pour débloquer de nouveaux badges africains prestigieux.',
           'is_read': 0,
-          'created_at': now.subtract(const Duration(hours: 2)).toIso8601String(),
+          'created_at':
+              now.subtract(const Duration(hours: 2)).toIso8601String(),
         }
       ];
       for (var n in notifications) {
-        await db.insert('notifications', n, conflictAlgorithm: ConflictAlgorithm.ignore);
+        await db.insert('notifications', n,
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       }
       return await db.query(
         'notifications',
@@ -619,12 +735,15 @@ class DatabaseHelper {
 
   Future<void> addFriend(String userId, Map<String, dynamic> friendData) async {
     final db = await instance.database;
-    await db.insert('friends', {
-      'user_id': userId,
-      'friend_uuid': friendData['uuid'],
-      'friend_pseudo': friendData['pseudo'],
-      'friend_avatar_id': friendData['avatar_id'],
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'friends',
+        {
+          'user_id': userId,
+          'friend_uuid': friendData['uuid'],
+          'friend_pseudo': friendData['pseudo'],
+          'friend_avatar_id': friendData['avatar_id'],
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getFriends(String userId) async {
@@ -634,7 +753,7 @@ class DatabaseHelper {
 
   Future<void> unlockBadge(String userId, String badgeKey) async {
     final db = await database;
-    
+
     // Check if already unlocked to avoid duplicate insert/sync
     final existing = await db.query(
       'user_badges',
@@ -644,13 +763,16 @@ class DatabaseHelper {
     if (existing.isNotEmpty) return;
 
     final nowStr = DateTime.now().toIso8601String();
-    
+
     // 1. Insert local user_badge
-    await db.insert('user_badges', {
-      'user_id': userId,
-      'badge_key': badgeKey,
-      'unlocked_at': nowStr,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'user_badges',
+        {
+          'user_id': userId,
+          'badge_key': badgeKey,
+          'unlocked_at': nowStr,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
 
     // 2. Add to sync queue for Supabase
     await db.insert('sync_queue', {
@@ -666,15 +788,18 @@ class DatabaseHelper {
     });
 
     // 3. Ajouter une notification automatique pour l'obtention du badge
-    final badgeMaps = await db.query('badges', columns: ['label'], where: 'id = ?', whereArgs: [badgeKey]);
+    final badgeMaps = await db.query('badges',
+        columns: ['label'], where: 'id = ?', whereArgs: [badgeKey]);
     String badgeName = badgeKey;
     if (badgeMaps.isNotEmpty) {
       badgeName = badgeMaps.first['label'] as String;
     }
 
-    final String notifId = 'badge-$badgeKey-${DateTime.now().millisecondsSinceEpoch}';
+    final String notifId =
+        'badge-$badgeKey-${DateTime.now().millisecondsSinceEpoch}';
     const String notifTitle = 'Nouveau Badge ! 🏆';
-    final String notifMessage = 'Félicitations, tu as débloqué le badge "$badgeName" !';
+    final String notifMessage =
+        'Félicitations, tu as débloqué le badge "$badgeName" !';
 
     final notificationPayload = {
       'id': notifId,
@@ -713,25 +838,27 @@ class DatabaseHelper {
     final List<String> newlyUnlocked = [];
 
     // Récupère les badges déjà débloqués
-    final existing = await db.query('user_badges', where: 'user_id = ?', whereArgs: [userId]);
+    final existing = await db
+        .query('user_badges', where: 'user_id = ?', whereArgs: [userId]);
     final unlockedKeys = existing.map((e) => e['badge_key'] as String).toSet();
 
     // Badge "explorateur" : avoir créé 10 decks
     if (!unlockedKeys.contains('explorateur')) {
-      final deckCount = Sqflite.firstIntValue(
-        await db.rawQuery('SELECT COUNT(*) FROM decks WHERE user_id = ?', [userId])
-      ) ?? 0;
+      final deckCount = Sqflite.firstIntValue(await db.rawQuery(
+              'SELECT COUNT(*) FROM decks WHERE user_id = ?', [userId])) ??
+          0;
       if (deckCount >= 10) {
         await unlockBadge(userId, 'explorateur');
         newlyUnlocked.add('explorateur');
       }
     }
 
-    // Badge "plume" : avoir créé 5 fiches en Littérature
+    // Badge "plume" : avoir créé 5 fiches en Français
     if (!unlockedKeys.contains('plume')) {
-      final deckCount = Sqflite.firstIntValue(
-        await db.rawQuery("SELECT COUNT(*) FROM decks WHERE user_id = ? AND subject = 'Littérature'", [userId])
-      ) ?? 0;
+      final deckCount = Sqflite.firstIntValue(await db.rawQuery(
+              "SELECT COUNT(*) FROM decks WHERE user_id = ? AND subject = 'Français'",
+              [userId])) ??
+          0;
       if (deckCount >= 5) {
         await unlockBadge(userId, 'plume');
         newlyUnlocked.add('plume');
@@ -741,8 +868,8 @@ class DatabaseHelper {
     // Badge "polyglotte" : avoir des fiches dans au moins 2 matières différentes
     if (!unlockedKeys.contains('polyglotte')) {
       final subjects = await db.rawQuery(
-        'SELECT DISTINCT subject FROM decks WHERE user_id = ? AND subject IS NOT NULL', [userId]
-      );
+          'SELECT DISTINCT subject FROM decks WHERE user_id = ? AND subject IS NOT NULL',
+          [userId]);
       if (subjects.length >= 2) {
         await unlockBadge(userId, 'polyglotte');
         newlyUnlocked.add('polyglotte');
@@ -751,24 +878,26 @@ class DatabaseHelper {
 
     // Badge "chercheur" : avoir terminé au moins 1 quiz
     if (!unlockedKeys.contains('chercheur')) {
-      final completedQuizzes = Sqflite.firstIntValue(
-        await db.rawQuery('SELECT COUNT(*) FROM quiz_results WHERE user_id = ?', [userId])
-      ) ?? 0;
+      final completedQuizzes = Sqflite.firstIntValue(await db.rawQuery(
+              'SELECT COUNT(*) FROM quiz_results WHERE user_id = ?',
+              [userId])) ??
+          0;
       if (completedQuizzes >= 1) {
         await unlockBadge(userId, 'chercheur');
         newlyUnlocked.add('chercheur');
       }
     }
 
-    // Badge "philosophe" : avoir fait 3 quiz avec un score moyen >= 80% en Humanités
+    // Badge "philosophe" : avoir fait 3 quiz avec un score moyen >= 80% en Histoire-Géo
     if (!unlockedKeys.contains('philosophe')) {
-      final quizCount = Sqflite.firstIntValue(
-        await db.rawQuery("SELECT COUNT(*) FROM quiz_results qr JOIN decks d ON qr.deck_id = d.uuid WHERE qr.user_id = ? AND d.subject = 'Humanités'", [userId])
-      ) ?? 0;
+      final quizCount = Sqflite.firstIntValue(await db.rawQuery(
+              "SELECT COUNT(*) FROM quiz_results qr JOIN decks d ON qr.deck_id = d.uuid WHERE qr.user_id = ? AND d.subject = 'Histoire-Géo'",
+              [userId])) ??
+          0;
       if (quizCount >= 3) {
         final avgResult = await db.rawQuery(
-          "SELECT AVG(CAST(qr.score AS FLOAT) / qr.total) as avg FROM quiz_results qr JOIN decks d ON qr.deck_id = d.uuid WHERE qr.user_id = ? AND d.subject = 'Humanités'", [userId]
-        );
+            "SELECT AVG(CAST(qr.score AS FLOAT) / qr.total) as avg FROM quiz_results qr JOIN decks d ON qr.deck_id = d.uuid WHERE qr.user_id = ? AND d.subject = 'Histoire-Géo'",
+            [userId]);
         final avg = (avgResult.first['avg'] as double?) ?? 0.0;
         if (avg >= 0.8) {
           await unlockBadge(userId, 'philosophe');
@@ -779,10 +908,12 @@ class DatabaseHelper {
 
     // Badge "pousse" : Atteindre le Niveau 2 (Baobab)
     if (!unlockedKeys.contains('pousse')) {
-      final userMaps = await db.query('users', columns: ['points'], where: 'uuid = ?', whereArgs: [userId]);
+      final userMaps = await db.query('users',
+          columns: ['points'], where: 'uuid = ?', whereArgs: [userId]);
       if (userMaps.isNotEmpty) {
         final points = userMaps.first['points'] as int? ?? 0;
-        if (points >= 100) { // 100 points = Début Niveau 2
+        if (points >= 100) {
+          // 100 points = Début Niveau 2
           await unlockBadge(userId, 'pousse');
           newlyUnlocked.add('pousse');
         }

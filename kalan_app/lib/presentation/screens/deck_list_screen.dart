@@ -17,14 +17,17 @@ class DeckListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Map<String, Map<String, dynamic>> subjectConfigs = {
-      'SVT': {'color': const Color(0xFF2D6A2D), 'bg': const Color(0xFFEAF3DE), 'icon': Icons.biotech_rounded},
+      // Système 6 catégories actuel
+      'Mathématiques': {'color': const Color(0xFF6A2D9F), 'bg': const Color(0xFFEDE9FE), 'icon': Icons.calculate_rounded},
+      'Sciences': {'color': const Color(0xFF009688), 'bg': const Color(0xFFE0F2F1), 'icon': Icons.science_rounded},
+      'Français': {'color': const Color(0xFFB00020), 'bg': const Color(0xFFFDECEE), 'icon': Icons.menu_book_rounded},
       'Histoire-Géo': {'color': const Color(0xFF854F0B), 'bg': const Color(0xFFFAEEDA), 'icon': Icons.public_rounded},
-      'Mathématiques': {'color': const Color(0xFF185FA5), 'bg': const Color(0xFFE6F1FB), 'icon': Icons.functions_rounded},
+      'Langues': {'color': const Color(0xFFE07B39), 'bg': const Color(0xFFFCEFE6), 'icon': Icons.translate_rounded},
+      'Autre': {'color': const Color(0xFF2196F3), 'bg': const Color(0xFFE3F2FD), 'icon': Icons.extension_rounded},
+      // Anciens sujets granulaires (compatibilité decks existants avant migration)
+      'SVT': {'color': const Color(0xFF009688), 'bg': const Color(0xFFE0F2F1), 'icon': Icons.biotech_rounded},
       'Physique-Chimie': {'color': const Color(0xFF6A2D9F), 'bg': const Color(0xFFEEEDFE), 'icon': Icons.science_rounded},
       'Anglais': {'color': const Color(0xFFE07B39), 'bg': const Color(0xFFFCEFE6), 'icon': Icons.translate_rounded},
-      'Français': {'color': const Color(0xFFB00020), 'bg': const Color(0xFFFDECEE), 'icon': Icons.menu_book_rounded},
-      'Informatique': {'color': const Color(0xFF009688), 'bg': const Color(0xFFE0F2F1), 'icon': Icons.computer_rounded},
-      'Autre': {'color': const Color(0xFF2196F3), 'bg': const Color(0xFFE3F2FD), 'icon': Icons.extension_rounded},
     };
 
     return Scaffold(

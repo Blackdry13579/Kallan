@@ -5,41 +5,64 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'local_model_config.dart';
 
 class ModelDownloader {
-  static const String _modelUrl =
-      'https://github.com/Blackdry13579/Gemma3-1B/releases/download/V1.0/gemma3-1b-it-int4.task';
-  static const String _fileName    = 'gemma3-1b-it-int4.task';
-  static const String _tmpFileName = 'gemma3-1b-it-int4.task.tmp';
-
-  // Nombre de connexions parallèles
   static const int _numWorkers = 4;
 
   // ─────────────────────────────────────────────────────────────────────────
   // API publique
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Importe le modèle depuis le stockage externe s'il a été copié manuellement.
-  static Future<bool> importModelFromExternalStorage() async {
+  /// Retourne le chemin complet du fichier de modèle s'il est installé, sinon null.
+  static Future<String?> getModelPath(LocalModelConfig config) async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final file = File('${docsDir.path}/${config.fileName}');
+    return file.existsSync() ? file.path : null;
+  }
+
+  /// Vérifie si Qwen GGUF est installé (modèle cible).
+  static Future<bool> isQwenInstalled() async {
+    return _isFilePresent(qwen25LocalModel.fileName);
+  }
+
+  /// Vérifie si Gemma est installé (fallback).
+  static Future<bool> isGemmaInstalled() async {
+    if (await _isFilePresent(gemmaLocalModel.fileName)) return true;
     try {
-      final docsDir   = await getApplicationDocumentsDirectory();
-      final target    = File('${docsDir.path}/$_fileName');
-      final prefs     = await SharedPreferences.getInstance();
+      return await FlutterGemmaPlugin.instance.modelManager.isModelInstalled;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Vérifie si au moins un modèle offline est disponible (Qwen ou Gemma).
+  /// Utilisé par les écrans pour afficher le badge "IA offline prête".
+  static Future<bool> isModelDownloaded() async {
+    if (await isQwenInstalled()) return true;
+    return isGemmaInstalled();
+  }
+
+  /// Importe un modèle depuis le stockage externe s'il a été copié manuellement.
+  static Future<bool> importModelFromExternalStorage(
+      [LocalModelConfig config = qwen25LocalModel]) async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final target = File('${docsDir.path}/${config.fileName}');
+      final prefs = await SharedPreferences.getInstance();
 
       if (await target.exists()) {
-        if (prefs.getString('installed_model_file_name') != _fileName) {
-          await prefs.setString('installed_model_file_name', _fileName);
-        }
+        await prefs.setString('installed_model_id', config.id);
         return true;
       }
 
       final extDir = await getExternalStorageDirectory();
       if (extDir != null) {
-        final source = File('${extDir.path}/$_fileName');
+        final source = File('${extDir.path}/${config.fileName}');
         if (await source.exists()) {
           debugPrint('[ModelDownloader] Modèle externe détecté → copie interne...');
           await source.copy(target.path);
-          await prefs.setString('installed_model_file_name', _fileName);
+          await prefs.setString('installed_model_id', config.id);
           debugPrint('[ModelDownloader] ✅ Importation réussie.');
           return true;
         }
@@ -50,23 +73,13 @@ class ModelDownloader {
     return false;
   }
 
-  /// Vérifie si le modèle est installé.
-  static Future<bool> isModelDownloaded() async {
-    if (await importModelFromExternalStorage()) return true;
-    try {
-      return await FlutterGemmaPlugin.instance.modelManager.isModelInstalled;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Téléchargement avec N connexions parallèles et reprise automatique.
-  ///
-  /// Émet des valeurs 0.0 → 1.0 (progression).
-  /// Émet -1.0 en cas d'erreur.
-  static Stream<double> downloadModel() {
+  /// Télécharge un modèle avec N connexions parallèles et reprise automatique.
+  /// Émet 0.0 → 1.0 (progression), -1.0 en cas d'erreur.
+  /// Par défaut télécharge Qwen2.5 1.5B Q4_K_M.
+  static Stream<double> downloadModel(
+      [LocalModelConfig config = qwen25LocalModel]) {
     final ctrl = StreamController<double>();
-    _downloadParallel(ctrl);
+    _downloadParallel(ctrl, config);
     return ctrl.stream;
   }
 
@@ -74,55 +87,59 @@ class ModelDownloader {
   // Implémentation interne
   // ─────────────────────────────────────────────────────────────────────────
 
-  static Future<void> _downloadParallel(StreamController<double> ctrl) async {
+  static Future<bool> _isFilePresent(String fileName) async {
     try {
-      final docsDir   = await getApplicationDocumentsDirectory();
-      final finalFile = File('${docsDir.path}/$_fileName');
-      final prefs     = await SharedPreferences.getInstance();
+      final docsDir = await getApplicationDocumentsDirectory();
+      return File('${docsDir.path}/$fileName').existsSync();
+    } catch (_) {
+      return false;
+    }
+  }
 
-      // Déjà installé ?
+  static Future<void> _downloadParallel(
+      StreamController<double> ctrl, LocalModelConfig config) async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final finalFile = File('${docsDir.path}/${config.fileName}');
+      final prefs = await SharedPreferences.getInstance();
+
       if (await finalFile.exists()) {
-        if (prefs.getString('installed_model_file_name') != _fileName) {
-          await prefs.setString('installed_model_file_name', _fileName);
-        }
+        await prefs.setString('installed_model_id', config.id);
         ctrl.add(1.0);
         ctrl.close();
         return;
       }
 
-      // Taille totale via HEAD
-      final totalBytes = await _getFileSize();
-      if (totalBytes <= 0) {
-        // Fallback : téléchargement en flux simple
-        debugPrint('[ModelDownloader] Taille inconnue → flux simple');
-        await _downloadSingleStream(ctrl, docsDir, prefs, finalFile);
+      final totalBytes = await _getFileSize(config.downloadUrl);
+      // Sanity check: model files are at least 50 MB — anything smaller means
+      // we got a redirect page or error body instead of a real Content-Length.
+      if (totalBytes <= 0 || totalBytes < 50 * 1024 * 1024) {
+        debugPrint('[ModelDownloader] Taille inconnue ou invalide ($totalBytes) → flux simple');
+        await _downloadSingleStream(ctrl, docsDir, prefs, finalFile, config);
         return;
       }
 
-      debugPrint('[ModelDownloader] $totalBytes octets → $_numWorkers connexions parallèles');
+      debugPrint(
+          '[ModelDownloader] $totalBytes octets → $_numWorkers connexions parallèles');
 
-      // Fichiers de parties
       final parts = List.generate(
         _numWorkers,
-        (i) => File('${docsDir.path}/$_fileName.part.$i'),
+        (i) => File('${docsDir.path}/${config.fileName}.part.$i'),
       );
 
-      // Taille de chaque partie
       final chunkSize = (totalBytes / _numWorkers).ceil();
       final expectedSizes = List.generate(_numWorkers, (i) {
         final start = i * chunkSize;
-        final end   = min((i + 1) * chunkSize, totalBytes);
+        final end = min((i + 1) * chunkSize, totalBytes);
         return end - start;
       });
 
-      // Octets déjà téléchargés par partie (reprise)
       final alreadyDone = <int>[];
       for (int i = 0; i < _numWorkers; i++) {
         final f = parts[i];
         alreadyDone.add(await f.exists() ? await f.length() : 0);
       }
 
-      // Suivi de progression (partagé entre les workers)
       final progress = List<int>.from(alreadyDone);
 
       void emit() {
@@ -131,22 +148,21 @@ class ModelDownloader {
         ctrl.add((done / totalBytes).clamp(0.0, 1.0));
       }
 
-      // Progression initiale si reprise
       if (alreadyDone.any((b) => b > 0)) emit();
 
-      // Lance les workers en parallèle
       final futures = <Future<void>>[];
       for (int i = 0; i < _numWorkers; i++) {
-        if (alreadyDone[i] >= expectedSizes[i]) continue; // Partie déjà complète
+        if (alreadyDone[i] >= expectedSizes[i]) continue;
 
-        final chunkStart  = i * chunkSize;
-        final chunkEnd    = chunkStart + expectedSizes[i] - 1;
+        final chunkStart = i * chunkSize;
+        final chunkEnd = chunkStart + expectedSizes[i] - 1;
         final resumeBytes = alreadyDone[i];
 
         futures.add(_downloadChunk(
+          url: config.downloadUrl,
           rangeStart: chunkStart + resumeBytes,
-          rangeEnd:   chunkEnd,
-          partFile:   parts[i],
+          rangeEnd: chunkEnd,
+          partFile: parts[i],
           appendMode: resumeBytes > 0,
           onProgress: (bytes) {
             progress[i] = resumeBytes + bytes;
@@ -157,33 +173,31 @@ class ModelDownloader {
 
       await Future.wait(futures);
 
-      // Vérification de complétude
       for (int i = 0; i < _numWorkers; i++) {
         final actual = await parts[i].length();
         if (actual < expectedSizes[i]) {
-          throw Exception('Partie $i incomplète : $actual/${expectedSizes[i]} octets');
+          throw Exception('Partie $i incomplète : $actual/${expectedSizes[i]}');
         }
       }
 
-      // Fusion des parties
       debugPrint('[ModelDownloader] Fusion des parties...');
-      final tmpFile = File('${docsDir.path}/$_tmpFileName');
-      final sink    = tmpFile.openWrite();
+      final tmpFile = File('${docsDir.path}/${config.tmpFileName}');
+      final sink = tmpFile.openWrite();
       for (final part in parts) {
         await sink.addStream(part.openRead());
       }
       await sink.close();
 
-      // Nettoyage des parties
       for (final part in parts) {
-        try { await part.delete(); } catch (_) {}
+        try {
+          await part.delete();
+        } catch (_) {}
       }
 
-      // Renommage et enregistrement
       await tmpFile.rename(finalFile.path);
-      await prefs.setString('installed_model_file_name', _fileName);
+      await prefs.setString('installed_model_id', config.id);
 
-      debugPrint('[ModelDownloader] ✅ Téléchargement terminé.');
+      debugPrint('[ModelDownloader] ✅ Téléchargement terminé : ${config.displayName}');
       ctrl.add(1.0);
       ctrl.close();
     } catch (e) {
@@ -195,8 +209,8 @@ class ModelDownloader {
     }
   }
 
-  /// Télécharge un segment (bytes=$rangeStart-$rangeEnd) dans [partFile].
   static Future<void> _downloadChunk({
+    required String url,
     required int rangeStart,
     required int rangeEnd,
     required File partFile,
@@ -205,18 +219,19 @@ class ModelDownloader {
   }) async {
     final client = HttpClient();
     try {
-      final request = await client.getUrl(Uri.parse(_modelUrl));
-      request.headers.set(HttpHeaders.rangeHeader, 'bytes=$rangeStart-$rangeEnd');
+      final request = await client.getUrl(Uri.parse(url));
+      request.headers
+          .set(HttpHeaders.rangeHeader, 'bytes=$rangeStart-$rangeEnd');
 
       final response = await request.close();
 
       if (response.statusCode != HttpStatus.partialContent &&
           response.statusCode != HttpStatus.ok) {
-        throw Exception('HTTP ${response.statusCode} '
-            '(bytes=$rangeStart-$rangeEnd)');
+        throw Exception(
+            'HTTP ${response.statusCode} (bytes=$rangeStart-$rangeEnd)');
       }
 
-      final sink     = partFile.openWrite(
+      final sink = partFile.openWrite(
         mode: appendMode ? FileMode.append : FileMode.write,
       );
       int downloaded = 0;
@@ -234,11 +249,10 @@ class ModelDownloader {
     }
   }
 
-  /// HEAD pour obtenir la taille totale du fichier.
-  static Future<int> _getFileSize() async {
+  static Future<int> _getFileSize(String url) async {
     final client = HttpClient();
     try {
-      final req  = await client.headUrl(Uri.parse(_modelUrl));
+      final req = await client.headUrl(Uri.parse(url));
       final resp = await req.close();
       await resp.drain<void>();
       return resp.contentLength > 0 ? resp.contentLength : 0;
@@ -250,19 +264,19 @@ class ModelDownloader {
     }
   }
 
-  /// Fallback : flux unique avec reprise (quand la taille est inconnue).
   static Future<void> _downloadSingleStream(
     StreamController<double> ctrl,
     Directory docsDir,
     SharedPreferences prefs,
     File finalFile,
+    LocalModelConfig config,
   ) async {
     try {
-      final tmpFile  = File('${docsDir.path}/$_tmpFileName');
-      int startByte  = await tmpFile.exists() ? await tmpFile.length() : 0;
+      final tmpFile = File('${docsDir.path}/${config.tmpFileName}');
+      int startByte = await tmpFile.exists() ? await tmpFile.length() : 0;
 
-      final client  = HttpClient();
-      final request = await client.getUrl(Uri.parse(_modelUrl));
+      final client = HttpClient();
+      final request = await client.getUrl(Uri.parse(config.downloadUrl));
       if (startByte > 0) {
         request.headers.set(HttpHeaders.rangeHeader, 'bytes=$startByte-');
       }
@@ -283,7 +297,8 @@ class ModelDownloader {
       }
 
       int totalBytes = 0;
-      final contentRange = response.headers.value(HttpHeaders.contentRangeHeader);
+      final contentRange =
+          response.headers.value(HttpHeaders.contentRangeHeader);
       if (contentRange != null) {
         final m = RegExp(r'/(\d+)$').firstMatch(contentRange);
         if (m != null) totalBytes = int.parse(m.group(1)!);
@@ -294,10 +309,10 @@ class ModelDownloader {
 
       if (totalBytes > 0 && startByte > 0) ctrl.add(startByte / totalBytes);
 
-      final sink      = tmpFile.openWrite(
+      final sink = tmpFile.openWrite(
         mode: startByte > 0 ? FileMode.append : FileMode.write,
       );
-      int downloaded  = startByte;
+      int downloaded = startByte;
 
       await for (final chunk in response) {
         sink.add(chunk);
@@ -312,7 +327,7 @@ class ModelDownloader {
       client.close();
 
       await tmpFile.rename(finalFile.path);
-      await prefs.setString('installed_model_file_name', _fileName);
+      await prefs.setString('installed_model_id', config.id);
 
       ctrl.add(1.0);
       ctrl.close();

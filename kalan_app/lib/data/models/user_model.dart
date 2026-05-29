@@ -16,12 +16,14 @@ class UserModel {
   final int? avatarId;
   final DateTime? lastActive;
   final DateTime createdAt;
+  final String? email;
   final String? pinHash;
 
   UserModel({
     this.id,
     required this.uuid,
     required this.pseudo,
+    this.email,
     this.firstName,
     this.lastName,
     this.schoolId,
@@ -56,6 +58,7 @@ class UserModel {
         isGuest: (map['is_guest'] ?? 0) == 1,
         avatarId: map['avatar_id'],
         lastActive: map['last_active'] != null ? DateTime.tryParse(map['last_active']) : null,
+        email: map['email'],
         createdAt: DateTime.parse(map['created_at']),
         pinHash: map['pin_hash'],
       );
@@ -64,6 +67,7 @@ class UserModel {
         'id': id,
         'uuid': uuid,
         'pseudo': pseudo,
+        'email': email,
         'language': language,
         'points': points,
         'level': level,
@@ -78,6 +82,7 @@ class UserModel {
   Map<String, dynamic> toSupabaseJson() => {
         'uuid': uuid,
         'pseudo': pseudo,
+        'email': email,
         'language': language,
         'points': points,
         'level': level,

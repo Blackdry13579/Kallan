@@ -29,6 +29,7 @@ import 'package:kalan_app/presentation/widgets/celebration_listener.dart';
 import 'package:kalan_app/presentation/widgets/notification_signal_banner.dart';
 import 'package:kalan_app/services/connectivity_service.dart';
 import 'package:kalan_app/services/deep_link_service.dart';
+import 'package:kalan_app/services/notification_scheduler.dart';
 import 'package:app_links/app_links.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
@@ -80,6 +81,8 @@ void main() async {
     SyncService.instance.init();
     SyncService.instance.processQueue();
   }
+
+  await NotificationScheduler.init();
 
   runApp(
     MultiRepositoryProvider(

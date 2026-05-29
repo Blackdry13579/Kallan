@@ -54,7 +54,7 @@ class _AIStatusIndicatorState extends State<AIStatusIndicator> {
             _isDownloading = false;
             _downloadProgress = 1.0;
           });
-          _showToast("IA locale Gemma 3 1B prête !");
+          _showToast("IA locale Qwen2.5 prête !");
         } else if (progress < 0) {
           setState(() {
             _isDownloading = false;
@@ -105,16 +105,16 @@ class _AIStatusIndicatorState extends State<AIStatusIndicator> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Modèle : Gemma 3 1B (Google)",
+              "Modèle : Qwen2.5 1.5B (offline)",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             SizedBox(height: 12),
             Text(
-              "Ce modèle d'un milliard de paramètres est installé directement sur ton smartphone.",
+              "Ce modèle est installé directement sur ton smartphone.",
             ),
             SizedBox(height: 8),
             Text(
-              "Il te permet de résumer des textes et de créer des fiches de révision instantanément, même sans aucune connexion Internet.",
+              "Il te permet de créer des fiches de révision instantanément, même sans aucune connexion Internet.",
             ),
             SizedBox(height: 16),
             Row(
@@ -158,7 +158,7 @@ class _AIStatusIndicatorState extends State<AIStatusIndicator> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Télécharger Gemma 3 1B (600 Mo)",
+              "Télécharger Qwen2.5 1.5B (~986 Mo)",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 12),

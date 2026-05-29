@@ -4,10 +4,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../ai/model_downloader.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/ocr_service.dart';
+import '../../services/pdf_service.dart';
 import '../../services/presence_service.dart';
 import '../blocs/user/user_bloc.dart';
 import '../blocs/user/user_event.dart';
@@ -23,6 +23,7 @@ import 'leaderboard_screen.dart';
 import 'create_deck_screen.dart';
 import 'camera_ocr_screen.dart';
 import 'generating_screen.dart';
+import 'offline_context_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,7 +40,7 @@ class HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   // ── Téléchargement IA offline ──────────────────────────────────────
-  double? _aiDownloadProgress;   // null = pas de DL, 0..1 = en cours, -1 = erreur
+  double? _aiDownloadProgress; // null = pas de DL, 0..1 = en cours, -1 = erreur
   StreamSubscription<double>? _aiDownloadSub;
 
   void changeTab(int index) => setState(() => _currentIndex = index);
@@ -86,24 +87,32 @@ class HomeScreenState extends State<HomeScreen> {
               'IA hors-ligne non installée',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A),
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1A1A1A),
               ),
             ),
             const SizedBox(height: 10),
             const Text(
-              'Pour générer des flashcards sans connexion internet, installe le modèle IA (~750 Mo) sur ton téléphone.\n\nLe téléchargement se fera en arrière-plan — tu pourras continuer à utiliser KALAN normalement.',
+              'Pour générer des flashcards sans connexion internet, installe le modèle IA Qwen2.5 (~986 Mo) sur ton téléphone.\n\nLe téléchargement se fera en arrière-plan — tu pourras continuer à utiliser KALAN normalement.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.55),
+              style:
+                  TextStyle(fontSize: 13, color: Colors.black54, height: 1.55),
             ),
             const SizedBox(height: 24),
             SizedBox(
-              width: double.infinity, height: 50,
+              width: double.infinity,
+              height: 50,
               child: ElevatedButton(
-                onPressed: () { Navigator.pop(ctx); _startBackgroundDownload(); },
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _startBackgroundDownload();
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2D6A2D),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
                   elevation: 0,
                 ),
                 child: const Text(
@@ -115,7 +124,9 @@ class HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 8),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Plus tard', style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600)),
+              child: const Text('Plus tard',
+                  style: TextStyle(
+                      color: Colors.black45, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -172,28 +183,39 @@ class HomeScreenState extends State<HomeScreen> {
         color: isError ? Colors.red.shade50 : const Color(0xFFEAF3DE),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isError ? Colors.red.shade200 : const Color(0xFF4CAF50).withValues(alpha: 0.3),
+          color: isError
+              ? Colors.red.shade200
+              : const Color(0xFF4CAF50).withValues(alpha: 0.3),
         ),
       ),
       child: isError
           ? Row(
               children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
+                const Icon(Icons.error_outline_rounded,
+                    color: Colors.red, size: 18),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
                     'Échec du téléchargement',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.red),
                   ),
                 ),
                 GestureDetector(
                   onTap: _startBackgroundDownload,
-                  child: const Text('Réessayer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF2D6A2D))),
+                  child: const Text('Réessayer',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF2D6A2D))),
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => setState(() => _aiDownloadProgress = null),
-                  child: const Icon(Icons.close_rounded, size: 16, color: Colors.red),
+                  child: const Icon(Icons.close_rounded,
+                      size: 16, color: Colors.red),
                 ),
               ],
             )
@@ -207,12 +229,18 @@ class HomeScreenState extends State<HomeScreen> {
                     const Expanded(
                       child: Text(
                         'Téléchargement IA hors-ligne...',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2D6A2D)),
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF2D6A2D)),
                       ),
                     ),
                     Text(
                       progress >= 1.0 ? '✅' : '${(progress * 100).toInt()}%',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF2D6A2D)),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF2D6A2D)),
                     ),
                   ],
                 ),
@@ -223,7 +251,8 @@ class HomeScreenState extends State<HomeScreen> {
                     value: progress,
                     minHeight: 5,
                     backgroundColor: const Color(0xFFD0E8C4),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2D6A2D)),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Color(0xFF2D6A2D)),
                   ),
                 ),
               ],
@@ -234,7 +263,7 @@ class HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const HomeDashboard(),
     const LibraryScreen(),
-    const CreateDeckScreen(), 
+    const CreateDeckScreen(),
     const LeaderboardScreen(),
     const ProfileScreen(),
   ];
@@ -281,8 +310,10 @@ class HomeScreenState extends State<HomeScreen> {
                 builder: (context, state) {
                   return Row(
                     children: [
-                      _buildNavTab(0, 'assets/icons/bottom/home.png', 'Accueil'),
-                      _buildNavTab(1, 'assets/icons/bottom/librairie.png', 'Librairie'),
+                      _buildNavTab(
+                          0, 'assets/icons/bottom/home.png', 'Accueil'),
+                      _buildNavTab(
+                          1, 'assets/icons/bottom/librairie.png', 'Librairie'),
                       Expanded(
                         child: GestureDetector(
                           onTap: () => _showCreateOptions(context),
@@ -295,7 +326,8 @@ class HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.35),
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.35),
                                     blurRadius: 10,
                                     offset: const Offset(0, 3),
                                   ),
@@ -310,7 +342,8 @@ class HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-                      _buildNavTab(3, 'assets/icons/bottom/classement.png', 'Niveau'),
+                      _buildNavTab(
+                          3, 'assets/icons/bottom/classement.png', 'Niveau'),
                       _buildProfileNavTab(4, state),
                     ],
                   );
@@ -333,14 +366,17 @@ class HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-          left: 24, right: 24, top: 20,
+          left: 24,
+          right: 24,
+          top: 20,
           bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
                 color: Colors.grey.shade300,
@@ -363,7 +399,8 @@ class HomeScreenState extends State<HomeScreen> {
               subtitle: 'Prendre une photo de tes notes',
               onTap: () {
                 Navigator.pop(ctx);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const CameraOCRScreen()));
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const CameraOCRScreen()));
               },
             ),
             const SizedBox(height: 12),
@@ -371,7 +408,7 @@ class HomeScreenState extends State<HomeScreen> {
               icon: Icons.picture_as_pdf_rounded,
               color: const Color(0xFFE24B4A),
               title: 'Importer un PDF',
-              subtitle: 'Générer depuis un document',
+              subtitle: 'Max 5 pages · Génère des fiches auto',
               onTap: () async {
                 Navigator.pop(ctx);
                 await _pickAndProcessPDF();
@@ -411,24 +448,34 @@ class HomeScreenState extends State<HomeScreen> {
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      // Syncfusion extrait le texte directement depuis le PDF (pas de MLKit)
       final bytes = await File(result.files.single.path!).readAsBytes();
-      final doc = PdfDocument(inputBytes: bytes);
-      final text = PdfTextExtractor(doc).extractText();
-      doc.dispose();
+      final analysis = await PdfService().analyze(bytes: bytes);
 
       if (!mounted) return;
       Navigator.pop(context);
       dialogShown = false;
 
-      if (text.trim().isEmpty) {
+      if (analysis.text.trim().isEmpty) {
+        final detail = analysis.likelyScanned
+            ? 'Ce PDF semble être scanné ou composé d\'images. On ajoutera l\'OCR PDF dans l\'étape suivante.'
+            : 'Aucun texte exploitable trouvé dans ce PDF.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Aucun texte trouvé dans ce PDF (PDF scanné non supporté)')),
+          SnackBar(content: Text(detail), duration: const Duration(seconds: 5)),
         );
         return;
       }
 
-      Navigator.push(context, MaterialPageRoute(builder: (_) => GeneratingScreen(ocrText: text)));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OfflineContextScreen(
+            ocrText: analysis.text,
+            detectedSubject: _detectSubjectFromPdfAnalysis(analysis),
+            documentContext: analysis.aiContext,
+            showOfflineBadge: false,
+          ),
+        ),
+      );
     } catch (e) {
       if (mounted) {
         if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
@@ -437,6 +484,39 @@ class HomeScreenState extends State<HomeScreen> {
         );
       }
     }
+  }
+
+  String _detectSubjectFromPdfAnalysis(PdfAnalysis analysis) {
+    final lower = analysis.text.toLowerCase();
+    if (lower.contains('plante') ||
+        lower.contains('oxygène') ||
+        lower.contains('oxygen') ||
+        lower.contains('photosynthèse') ||
+        lower.contains('cellule') ||
+        lower.contains('molécule') ||
+        lower.contains('équation') ||
+        lower.contains('force') ||
+        lower.contains('vitesse')) {
+      return 'Sciences';
+    }
+    if (lower.contains('poème') ||
+        lower.contains('roman') ||
+        lower.contains('grammaire') ||
+        lower.contains('auteur')) {
+      return 'Français';
+    }
+    if (lower.contains('histoire') ||
+        lower.contains('géographie') ||
+        lower.contains('empire') ||
+        lower.contains('climat')) {
+      return 'Histoire-Géo';
+    }
+    if (analysis.detectedLanguage == 'anglais' ||
+        lower.contains('english') ||
+        lower.contains('vocabulary')) {
+      return 'Langues';
+    }
+    return 'Autre';
   }
 
   Future<void> _pickAndProcessImage() async {
@@ -467,7 +547,8 @@ class HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      Navigator.push(context, MaterialPageRoute(builder: (_) => GeneratingScreen(ocrText: text)));
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => GeneratingScreen(ocrText: text)));
     } catch (e) {
       if (mounted) {
         if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
@@ -511,8 +592,12 @@ class HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    Text(subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text(subtitle,
+                        style: TextStyle(
+                            color: Colors.grey.shade600, fontSize: 12)),
                   ],
                 ),
               ),
@@ -547,10 +632,14 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               child: ClipOval(
                 child: Image.asset(
-                  avatarId != null ? 'assets/avatars/avatar$avatarId.png' : 'assets/avatars/avatar1.png',
+                  avatarId != null
+                      ? 'assets/avatars/avatar$avatarId.png'
+                      : 'assets/avatars/avatar1.png',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Icon(Icons.person_rounded,
-                    color: isSelected ? AppColors.primary : Colors.grey.shade500, size: 16),
+                      color:
+                          isSelected ? AppColors.primary : Colors.grey.shade500,
+                      size: 16),
                 ),
               ),
             ),
@@ -559,7 +648,8 @@ class HomeScreenState extends State<HomeScreen> {
               duration: const Duration(milliseconds: 200),
               width: isSelected ? 5 : 0,
               height: isSelected ? 5 : 0,
-              decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                  color: AppColors.primary, shape: BoxShape.circle),
             ),
           ],
         ),
@@ -637,16 +727,22 @@ class _SlidingNotchPainter extends CustomPainter {
 
     // Courbe d'entrée du notch (descend doucement)
     path.cubicTo(
-      notchCenterX - notchHalfWidth * 0.55, 0,
-      notchCenterX - notchHalfWidth * 0.45, notchDepth,
-      notchCenterX, notchDepth,
+      notchCenterX - notchHalfWidth * 0.55,
+      0,
+      notchCenterX - notchHalfWidth * 0.45,
+      notchDepth,
+      notchCenterX,
+      notchDepth,
     );
 
     // Courbe de sortie du notch (remonte doucement)
     path.cubicTo(
-      notchCenterX + notchHalfWidth * 0.45, notchDepth,
-      notchCenterX + notchHalfWidth * 0.55, 0,
-      notchEnd, 0,
+      notchCenterX + notchHalfWidth * 0.45,
+      notchDepth,
+      notchCenterX + notchHalfWidth * 0.55,
+      0,
+      notchEnd,
+      0,
     );
 
     // Coin supérieur droit arrondi

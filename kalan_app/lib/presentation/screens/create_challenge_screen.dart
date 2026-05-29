@@ -10,7 +10,6 @@ import '../blocs/user/user_state.dart';
 import '../../data/repositories/user_repository_impl.dart';
 import 'waiting_room_screen.dart';
 import '../../core/utils/level_utils.dart';
-import '../../services/local_ai_service.dart';
 
 class CreateChallengeScreen extends StatefulWidget {
   final String? initialOpponentId;
@@ -171,7 +170,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
 
                 const SizedBox(height: 32),
 
-                if (_selectedUser == null && _opponentController.text != 'Maitre Kalan') ...[
+                if (_selectedUser == null) ...[
                   _buildHeader(Icons.person_search_rounded, 'CHERCHER UN ADVERSAIRE', Colors.purple),
                   const SizedBox(height: 12),
                   TextField(
@@ -191,7 +190,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
                   const SizedBox(height: 24),
                 ],
 
-                if (_selectedUser != null || _opponentController.text == 'Maitre Kalan') 
+                if (_selectedUser != null)
                   _buildRecapBlock(hasEnoughXp),
                 
                 const SizedBox(height: 60),
@@ -309,16 +308,10 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
   }
 
   void _challengeAI() {
+    // Maître Kalan = l'IA choisit le thème à surprise, on joue quand même entre humains
     setState(() {
       _selectedTheme = 'Mélange IA';
-      _opponentController.text = 'Maitre Kalan';
-      _selectedUser = {
-        'uuid': 'ai-kalan-uuid',
-        'pseudo': 'Maitre Kalan',
-        'level': 99
-      };
       _showThemes = false;
-      _searchResults = [];
     });
   }
 
@@ -396,11 +389,10 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
                   ],
                 ),
               ),
-              if (_selectedUser?['uuid'] != 'ai-kalan-uuid')
-                IconButton(
-                  onPressed: () => setState(() { _selectedUser = null; _opponentController.clear(); }),
-                  icon: const Icon(Icons.close_rounded, color: Colors.grey),
-                ),
+              IconButton(
+                onPressed: () => setState(() { _selectedUser = null; _opponentController.clear(); }),
+                icon: const Icon(Icons.close_rounded, color: Colors.grey),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -432,29 +424,26 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
   Future<void> _sendChallenge() async {
     if (_selectedUser == null) return;
 
-    final isAI = _selectedUser!['uuid'] == 'ai-kalan-uuid';
-    if (!isAI) {
-      final isOnline = _isUserOnline(_selectedUser!['last_active'] as String?);
-      if (!isOnline) {
-        if (!mounted) return;
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            title: const Text('Ami hors ligne', style: TextStyle(fontWeight: FontWeight.w900)),
-            content: Text('${_selectedUser!['pseudo']} n\'est pas connecté en ce moment. Le défi sera envoyé mais il devra accepter dès qu\'il se reconnecte.'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF4500), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                child: const Text('Envoyer quand même'),
-              ),
-            ],
-          ),
-        );
-        if (confirm != true) return;
-      }
+    final isOnline = _isUserOnline(_selectedUser!['last_active'] as String?);
+    if (!isOnline) {
+      if (!mounted) return;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Ami hors ligne', style: TextStyle(fontWeight: FontWeight.w900)),
+          content: Text('${_selectedUser!['pseudo']} n\'est pas connecté en ce moment. Le défi sera envoyé mais il devra accepter dès qu\'il se reconnecte.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF4500), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+              child: const Text('Envoyer quand même'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
     }
 
     setState(() => _isLoading = true);
@@ -474,20 +463,6 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
         xpBet: _xpBet,
       );
 
-      // Si c'est l'IA, on accepte et génère immédiatement
-      if (isAI) {
-        await battleService.acceptBattle(battle.id);
-        await battleService.startGeneration(battle.id);
-        
-        try {
-          final localAI = LocalAIService();
-          final content = await localAI.generateBattleContent(theme: _selectedTheme ?? 'Mélange');
-          await battleService.updateBattleContent(battle.id, content);
-        } catch (e) {
-          debugPrint('Erreur génération IA Battle: $e');
-        }
-      }
-
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -501,8 +476,9 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
         );
       }
     } catch (e) {
+      debugPrint('Erreur envoi défi: $e');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible d\'envoyer le défi. Vérifie ta connexion et réessaie.')),
+        SnackBar(content: Text('Erreur: $e'), duration: const Duration(seconds: 6)),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

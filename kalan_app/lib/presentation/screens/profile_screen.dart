@@ -12,6 +12,7 @@ import 'about_screen.dart';
 import 'roadmap_screen.dart';
 import '../../data/local/database_helper.dart';
 import '../../data/remote/supabase_service.dart';
+import '../../services/notification_scheduler.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -752,13 +753,24 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 prefKey: 'sound_enabled',
                 defaultValue: true,
               ),
-              const _SettingItem(
+              _SettingItem(
                 icon: Icons.notifications_none_rounded,
-                iconBg: Color(0xFFEEF2FF),
+                iconBg: const Color(0xFFEEF2FF),
                 title: 'Rappel Notification',
                 subtitle: 'Rappels de révisions quotidiens',
                 prefKey: 'notifications_enabled',
                 defaultValue: true,
+                onChanged: (enabled) async {
+                  if (enabled) {
+                    final prefs = await SharedPreferences.getInstance();
+                    final timeStr = prefs.getString('reminder_time') ?? '19:00';
+                    final parts = timeStr.split(':');
+                    await NotificationScheduler.scheduleDaily(
+                        int.parse(parts[0]), int.parse(parts[1]));
+                  } else {
+                    await NotificationScheduler.cancel();
+                  }
+                },
               ),
               _SettingItem(
                 icon: Icons.access_time_rounded,
@@ -819,6 +831,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       final formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
       await prefs.setString('reminder_time', formattedTime);
       setState(() => _reminderTime = formattedTime);
+
+      if (prefs.getBool('notifications_enabled') ?? true) {
+        await NotificationScheduler.scheduleDaily(selectedTime.hour, selectedTime.minute);
+      }
     }
   }
 
@@ -938,6 +954,7 @@ class _SettingItem extends StatefulWidget {
   final bool defaultValue;
   final bool isAction;
   final VoidCallback? onTap;
+  final Future<void> Function(bool value)? onChanged;
 
   const _SettingItem({
     required this.icon,
@@ -948,6 +965,7 @@ class _SettingItem extends StatefulWidget {
     this.defaultValue = true,
     this.isAction = false,
     this.onTap,
+    this.onChanged,
   });
 
   @override
@@ -978,6 +996,7 @@ class _SettingItemState extends State<_SettingItem> {
               final prefs = await SharedPreferences.getInstance();
               await prefs.setBool(widget.prefKey, newValue);
               setState(() => _value = newValue);
+              await widget.onChanged?.call(newValue);
             },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
