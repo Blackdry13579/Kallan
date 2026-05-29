@@ -80,8 +80,8 @@ void main() {
       final aiService = LocalAIService();
       // On teste la structure du prompt via une méthode de secours ou en vérifiant le code
       // Ici, on va simuler ce que l'IA recevrait
-      final subject = "Histoire-Géo";
-      final text = "L'Empire du Ghana était puissant.";
+      const subject = "Histoire-Géo";
+      const text = "L'Empire du Ghana était puissant.";
       
       // Simulation du prompt (le même que dans le service)
       final prompt = '''### ROLE

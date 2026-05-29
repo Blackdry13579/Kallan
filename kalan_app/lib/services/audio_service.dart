@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AudioService {
@@ -11,6 +12,7 @@ class AudioService {
   /// Joue un son si le paramètre "sound_enabled" est vrai.
   /// Les sons doivent être placés dans `assets/audio/`.
   Future<void> play(String soundName) async {
+    if (kIsWeb) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final bool isEnabled = prefs.getBool('sound_enabled') ?? true;

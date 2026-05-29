@@ -40,25 +40,67 @@ class UserModel {
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) => UserModel(
-        id: map['id'],
-        uuid: map['uuid'],
-        pseudo: map['pseudo'],
+        id: _localIdFromMap(map),
+        uuid: _uuidFromMap(map),
+        pseudo: map['pseudo'] as String,
         firstName: map['first_name'] ?? map['firstName'],
         lastName: map['last_name'] ?? map['lastName'],
-        schoolId: map['school_id'],
+        schoolId: _asIntOrNull(map['school_id']),
         schoolName: map['school_name'],
-        classId: map['class_id'],
+        classId: _asIntOrNull(map['class_id']),
         className: map['class_name'] ?? map['class'],
         language: map['language'] ?? 'fr',
-        points: map['points'] ?? 0,
-        level: map['level'] ?? 1,
-        streak: map['streak'] ?? 0,
-        isGuest: (map['is_guest'] ?? 0) == 1,
-        avatarId: map['avatar_id'],
-        lastActive: map['last_active'] != null ? DateTime.tryParse(map['last_active']) : null,
-        createdAt: DateTime.parse(map['created_at']),
-        pinHash: map['pin_hash'],
+        points: _asInt(map['points']),
+        level: _asInt(map['level'], 1),
+        streak: _asInt(map['streak']),
+        isGuest: _asBool(map['is_guest']),
+        avatarId: _asIntOrNull(map['avatar_id']),
+        lastActive: _parseDateTime(map['last_active']),
+        createdAt: _parseDateTime(map['created_at']) ?? DateTime.now(),
+        pinHash: map['pin_hash'] as String?,
       );
+
+  /// SQLite row id (int). Supabase may expose a UUID in `id` — ignore it here.
+  static int? _localIdFromMap(Map<String, dynamic> map) {
+    final id = map['id'];
+    if (id is int) return id;
+    return null;
+  }
+
+  static String _uuidFromMap(Map<String, dynamic> map) {
+    final uuid = map['uuid'];
+    if (uuid is String && uuid.isNotEmpty) return uuid;
+    final id = map['id'];
+    if (id is String && id.isNotEmpty) return id;
+    throw ArgumentError('User map missing uuid');
+  }
+
+  static int? _asIntOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static int _asInt(dynamic value, [int fallback = 0]) =>
+      _asIntOrNull(value) ?? fallback;
+
+  static bool _asBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      return value == '1' || value.toLowerCase() == 'true';
+    }
+    return false;
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
 
   Map<String, dynamic> toMap() => {
         'id': id,

@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:kalan_app/core/constants/app_colors.dart';
+import 'package:kalan_app/core/navigation/app_navigator_key.dart';
 import 'package:kalan_app/services/audio_service.dart';
+import 'package:kalan_app/presentation/navigation/battle_invite_navigation.dart';
 import 'package:kalan_app/services/notification_signal_service.dart';
 
+/// Écoute les signaux et les affiche via l'[Overlay] du [Navigator]
+/// (évite l'erreur « No Overlay widget found » du builder MaterialApp).
 class NotificationSignalBanner extends StatefulWidget {
   final Widget child;
 
@@ -21,6 +25,7 @@ class NotificationSignalBanner extends StatefulWidget {
 class _NotificationSignalBannerState extends State<NotificationSignalBanner> {
   StreamSubscription<NotificationSignal>? _subscription;
   Timer? _hideTimer;
+  OverlayEntry? _overlayEntry;
   NotificationSignal? _signal;
   bool _visible = false;
 
@@ -28,45 +33,72 @@ class _NotificationSignalBannerState extends State<NotificationSignalBanner> {
   void initState() {
     super.initState();
     _subscription = NotificationSignalService.instance.stream.listen(_show);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureOverlayEntry());
   }
 
   @override
   void dispose() {
     _hideTimer?.cancel();
     _subscription?.cancel();
+    _overlayEntry?.remove();
+    _overlayEntry = null;
     super.dispose();
   }
 
+  void _ensureOverlayEntry() {
+    if (_overlayEntry != null) return;
+    final overlay = appNavigatorKey.currentState?.overlay;
+    if (overlay == null) return;
+
+    _overlayEntry = OverlayEntry(builder: _buildOverlayBanner);
+    overlay.insert(_overlayEntry!);
+  }
+
   void _show(NotificationSignal signal) {
-    if (!mounted) return;
+    _ensureOverlayEntry();
+    if (_overlayEntry == null) return;
 
     setState(() {
       _signal = signal;
       _visible = true;
     });
+    _overlayEntry!.markNeedsBuild();
 
     AudioService().play('notification');
 
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 4), _hide);
+    final isBattle = signal.type == 'battle' && signal.battleId != null;
+    _hideTimer = Timer(
+      Duration(seconds: isBattle ? 12 : 4),
+      _hide,
+    );
+  }
+
+  Future<void> _onBannerTap(NotificationSignal signal) async {
+    if (signal.type == 'battle' && signal.battleId != null) {
+      _hideTimer?.cancel();
+      _hide();
+      await openBattleInviteSheet(signal.battleId!);
+      return;
+    }
+    _hide();
   }
 
   void _hide() {
     if (!mounted) return;
     setState(() => _visible = false);
+    _overlayEntry?.markNeedsBuild();
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildOverlayBanner(BuildContext context) {
     final signal = _signal;
     final topPadding = MediaQuery.paddingOf(context).top;
 
-    return Stack(
-      children: [
-        widget.child,
-        IgnorePointer(
-          ignoring: !_visible,
-          child: AnimatedPositioned(
+    return IgnorePointer(
+      ignoring: !_visible,
+      child: Stack(
+        children: [
+          AnimatedPositioned(
             duration: const Duration(milliseconds: 420),
             curve: Curves.easeOutCubic,
             top: _visible ? topPadding + 10 : -120,
@@ -79,22 +111,28 @@ class _NotificationSignalBannerState extends State<NotificationSignalBanner> {
                   ? const SizedBox.shrink()
                   : _BannerCard(
                       signal: signal,
+                      onTap: () => _onBannerTap(signal),
                       onClose: _hide,
                     ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _BannerCard extends StatelessWidget {
   final NotificationSignal signal;
+  final VoidCallback onTap;
   final VoidCallback onClose;
 
   const _BannerCard({
     required this.signal,
+    required this.onTap,
     required this.onClose,
   });
 
@@ -103,11 +141,16 @@ class _BannerCard extends StatelessWidget {
     final color = _colorForType(signal.type);
     final icon = _iconForType(signal.type);
 
+    final tappable = signal.type == 'battle' && signal.battleId != null;
+
     return Material(
       color: Colors.transparent,
       child: SafeArea(
         bottom: false,
-        child: Container(
+        child: GestureDetector(
+          onTap: tappable ? onTap : null,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
           constraints: const BoxConstraints(minHeight: 76),
           padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
           decoration: BoxDecoration(
@@ -164,19 +207,36 @@ class _BannerCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (tappable) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Appuie pour accepter ou refuser',
+                        style: TextStyle(
+                          color: color.withValues(alpha: 0.85),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
               const SizedBox(width: 6),
-              IconButton(
-                onPressed: onClose,
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.close_rounded, size: 18),
-                color: const Color(0xFF777777),
-                tooltip: 'Fermer',
+              GestureDetector(
+                onTap: onClose,
+                behavior: HitTestBehavior.opaque,
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: Color(0xFF777777),
+                  ),
+                ),
               ),
             ],
           ),
+        ),
         ),
       ),
     );

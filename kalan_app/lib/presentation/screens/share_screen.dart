@@ -169,7 +169,7 @@ class _ShareScreenState extends State<ShareScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white, 
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 4))]
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 4))]
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,7 +181,7 @@ class _ShareScreenState extends State<ShareScreen> {
                         if (widget.deck != null)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                             child: Text(widget.deck!.title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
                           ),
                       ],
@@ -213,7 +213,7 @@ class _ShareScreenState extends State<ShareScreen> {
                                 ),
                                 child: ListTile(
                                   onTap: () => _sendDeck(result.device),
-                                  leading: CircleAvatar(backgroundColor: Colors.blue.withOpacity(0.1), child: const Icon(Icons.phone_android_rounded, color: Colors.blue, size: 20)),
+                                  leading: CircleAvatar(backgroundColor: Colors.blue.withValues(alpha: 0.1), child: const Icon(Icons.phone_android_rounded, color: Colors.blue, size: 20)),
                                   title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                   subtitle: const Text('Appuyer pour envoyer', style: TextStyle(fontSize: 12, color: Colors.green)),
                                   trailing: const Icon(Icons.send_rounded, color: AppColors.primary, size: 18),
@@ -269,7 +269,7 @@ class _ShareScreenState extends State<ShareScreen> {
       children: [
         Container(
           width: 80, height: 80,
-          decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
           child: const Icon(Icons.share_rounded, color: AppColors.primary, size: 36),
         ),
         const SizedBox(height: 16),

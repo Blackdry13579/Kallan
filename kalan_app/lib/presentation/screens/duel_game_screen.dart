@@ -4,8 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'challenge_result_screen.dart';
 import '../../services/battle_service.dart';
+import '../../services/local_ai_service.dart';
 import '../../../data/remote/supabase_service.dart';
-import '../../domain/models/battle_model.dart';
+import '../../domain/models/battle_model.dart' show Battle;
 
 class DuelGameScreen extends StatefulWidget {
   final String opponentName;
@@ -13,6 +14,8 @@ class DuelGameScreen extends StatefulWidget {
   final String? yourAvatar;
   final int stake;
   final String battleId;
+  final Map<String, dynamic>? battleContent;
+  final bool isLocalBattle;
 
   const DuelGameScreen({
     super.key,
@@ -21,6 +24,8 @@ class DuelGameScreen extends StatefulWidget {
     this.yourAvatar,
     required this.stake,
     required this.battleId,
+    this.battleContent,
+    this.isLocalBattle = false,
   });
 
   @override
@@ -54,22 +59,33 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
     super.initState();
     _currentUserId = SupabaseService.currentUser?.id;
     _loadQuizzes();
-    _listenToBattle();
+    if (!widget.isLocalBattle) {
+      _listenToBattle();
+    }
   }
 
   Future<void> _loadQuizzes() async {
     try {
-      final response = await Supabase.instance.client
-          .from('battles')
-          .select('content')
-          .eq('id', widget.battleId)
-          .single();
-      
-      final content = response['content'] as Map<String, dynamic>?;
+      Map<String, dynamic>? content = widget.battleContent;
+
+      if (content == null) {
+        final response = await Supabase.instance.client
+            .from('battles')
+            .select('content, theme')
+            .eq('id', widget.battleId)
+            .single();
+        content = Battle.parseContent(response['content']);
+        content?['theme'] = response['theme'];
+      }
+
       if (content != null && content['quizzes'] != null) {
+        final repaired = LocalAIService().repairBattleContent(
+          content,
+          theme: content['theme']?.toString(),
+        );
         if (mounted) {
           setState(() {
-            _deck = content['quizzes'];
+            _deck = repaired['quizzes'] as List<dynamic>;
             _isLoading = false;
           });
           _startQuestionTimer();
@@ -77,6 +93,7 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
       }
     } catch (e) {
       debugPrint('Erreur chargement quiz: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -111,6 +128,10 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
   }
 
   void _finishGame() {
+    if (widget.isLocalBattle) {
+      _navigateToResult();
+      return;
+    }
     _battleService.finishBattle(widget.battleId);
   }
 
@@ -151,6 +172,7 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
           scoreYou: _scoreYou,
           scoreThem: _scoreThem,
           battleId: widget.battleId,
+          isLocalBattle: widget.isLocalBattle,
         ),
       ),
     );
@@ -159,10 +181,23 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
   void _handlePick(String choice) {
     if (_isAnswered) return;
 
+    final correct = _deck[_currentIndex]['correctAnswer']?.toString() ?? '';
+    final isCorrect = choice == correct;
+
     setState(() {
       _pickedAnswer = choice;
       _isAnswered = true;
+      if (widget.isLocalBattle && isCorrect) {
+        _scoreYou++;
+      }
     });
+
+    if (widget.isLocalBattle) {
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (mounted) _nextQuestion();
+      });
+      return;
+    }
 
     _battleService.submitAnswer(widget.battleId, _currentUserId!, _currentIndex, choice);
   }
@@ -405,7 +440,9 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
   Widget _buildQuitButton() {
     return TextButton(
       onPressed: () {
-        _battleService.abandonBattle(widget.battleId, _currentUserId!);
+        if (!widget.isLocalBattle && _currentUserId != null) {
+          _battleService.abandonBattle(widget.battleId, _currentUserId!);
+        }
         Navigator.pop(context);
       },
       child: Text(

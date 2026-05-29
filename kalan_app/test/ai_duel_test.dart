@@ -51,7 +51,7 @@ JSON : {"question": "$q", "answer": "<réponse>", "source": "web"}''';
 
     test('Simulation Gemma (Offline + Expertise)', () {
       print('\n--- SIMULATION GEMMA (OFFLINE) ---');
-      final subject = "Culture Générale";
+      const subject = "Culture Générale";
       
       // On simule le prompt "Expertise" que j'ai créé
       for (var q in testQuestions) {

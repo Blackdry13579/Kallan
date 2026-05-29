@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../domain/models/battle_model.dart' show Battle;
 import 'duel_game_screen.dart';
 
 class DuelFlashcardReviewScreen extends StatefulWidget {
@@ -9,6 +10,8 @@ class DuelFlashcardReviewScreen extends StatefulWidget {
   final String? opponentAvatar;
   final int stake;
   final String battleId;
+  final Map<String, dynamic>? battleContent;
+  final bool isLocalBattle;
 
   const DuelFlashcardReviewScreen({
     super.key,
@@ -16,6 +19,8 @@ class DuelFlashcardReviewScreen extends StatefulWidget {
     this.opponentAvatar,
     required this.stake,
     required this.battleId,
+    this.battleContent,
+    this.isLocalBattle = false,
   });
 
   @override
@@ -37,13 +42,22 @@ class _DuelFlashcardReviewScreenState extends State<DuelFlashcardReviewScreen> {
 
   Future<void> _loadFlashcards() async {
     try {
+      if (widget.battleContent != null && widget.battleContent!['flashcards'] != null) {
+        setState(() {
+          _flashcards = widget.battleContent!['flashcards'] as List<dynamic>;
+          _isLoading = false;
+        });
+        _startTimer();
+        return;
+      }
+
       final response = await Supabase.instance.client
           .from('battles')
           .select('content')
           .eq('id', widget.battleId)
           .single();
-      
-      final content = response['content'] as Map<String, dynamic>?;
+
+      final content = Battle.parseContent(response['content']);
       if (content != null && content['flashcards'] != null) {
         setState(() {
           _flashcards = content['flashcards'];
@@ -53,6 +67,7 @@ class _DuelFlashcardReviewScreenState extends State<DuelFlashcardReviewScreen> {
       }
     } catch (e) {
       debugPrint('Erreur loading flashcards: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -94,6 +109,8 @@ class _DuelFlashcardReviewScreenState extends State<DuelFlashcardReviewScreen> {
           opponentAvatar: widget.opponentAvatar,
           stake: widget.stake,
           battleId: widget.battleId,
+          battleContent: widget.battleContent,
+          isLocalBattle: widget.isLocalBattle,
         ),
       ),
     );
@@ -148,7 +165,7 @@ class _DuelFlashcardReviewScreenState extends State<DuelFlashcardReviewScreen> {
                         const SizedBox(width: 6),
                         Text(
                           '00:${_secondsLeft.toString().padLeft(2, '0')}',
-                          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Color(0xFFF43F5E)),
+                          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFFF43F5E)),
                         ),
                       ],
                     ),

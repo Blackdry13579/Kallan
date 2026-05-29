@@ -1,3 +1,5 @@
+import 'package:kalan_app/core/utils/sqlite_map_utils.dart';
+
 class DeckModel {
   final int? id;
   final String uuid;
@@ -26,17 +28,17 @@ class DeckModel {
   });
 
   factory DeckModel.fromMap(Map<String, dynamic> map) => DeckModel(
-        id: map['id'],
-        uuid: map['uuid'],
-        userId: map['user_id'],
-        title: map['title'],
-        description: map['description'],
-        subject: map['subject'],
-        level: map['level'],
-        isPublic: map['is_public'] == 1,
-        downloadCount: map['download_count'] ?? 0,
-        createdAt: DateTime.parse(map['created_at']),
-        isSynced: map['is_synced'] == 1,
+        id: SqliteMapUtils.localId(map['id']),
+        uuid: SqliteMapUtils.uuidFromMap(map),
+        userId: SqliteMapUtils.requiredString(map['user_id'], field: 'user_id'),
+        title: SqliteMapUtils.requiredString(map['title'], field: 'title'),
+        description: map['description'] as String?,
+        subject: map['subject'] as String?,
+        level: map['level'] as String?,
+        isPublic: SqliteMapUtils.asBool(map['is_public']),
+        downloadCount: SqliteMapUtils.asInt(map['download_count']),
+        createdAt: SqliteMapUtils.parseDateTime(map['created_at']) ?? DateTime.now(),
+        isSynced: SqliteMapUtils.asBool(map['is_synced']),
       );
 
   Map<String, dynamic> toMap() => {
@@ -65,16 +67,6 @@ class DeckModel {
         'created_at': createdAt.toIso8601String(),
       };
 
-  factory DeckModel.fromSupabaseJson(Map<String, dynamic> json) => DeckModel(
-        uuid: json['uuid'],
-        userId: json['user_id'],
-        title: json['title'],
-        description: json['description'],
-        subject: json['subject'],
-        level: json['level'],
-        isPublic: json['is_public'] ?? false,
-        downloadCount: json['download_count'] ?? 0,
-        createdAt: DateTime.parse(json['created_at']),
-        isSynced: true,
-      );
+  factory DeckModel.fromSupabaseJson(Map<String, dynamic> json) =>
+      DeckModel.fromMap({...json, 'is_synced': 1});
 }

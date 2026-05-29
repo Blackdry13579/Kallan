@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
@@ -234,6 +235,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
+      // Sur le web : connexion via Supabase (SQLite web est optionnel)
+      if (kIsWeb) {
+        await _loginViaSupabase(pseudo);
+        return;
+      }
+
       // 1. Chercher localement — login simple sans PIN
       final userMap = await DatabaseHelper.instance.getUserByPseudo(pseudo);
       if (userMap != null) {
@@ -328,6 +335,53 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur: ${e.toString()}')),
+        );
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  /// Connexion navigateur (Chrome) — pseudo trouvé sur Supabase.
+  Future<void> _loginViaSupabase(String pseudo) async {
+    try {
+      final remoteData = await SupabaseService.client
+          .from('users')
+          .select()
+          .eq('pseudo', pseudo)
+          .maybeSingle();
+
+      if (remoteData == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Pseudo inconnu. Crée un compte ou vérifie l\'orthographe.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
+
+      final userModel = UserModel.fromMap({
+        ...remoteData,
+        'created_at': remoteData['created_at'] ?? DateTime.now().toIso8601String(),
+        'is_guest': 0,
+      });
+
+      try {
+        final db = await DatabaseHelper.instance.database;
+        await db.insert('users', userModel.toMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      } catch (e) {
+        debugPrint('Cache local web ignoré: $e');
+      }
+
+      await _loginWithMap(userModel.toMap());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur connexion: ${e.toString()}')),
         );
         setState(() => _isLoading = false);
       }

@@ -8,6 +8,7 @@ import '../blocs/notification/notification_event.dart';
 import '../blocs/notification/notification_state.dart';
 import '../blocs/user/user_bloc.dart';
 import '../blocs/user/user_state.dart';
+import '../navigation/battle_invite_navigation.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -66,6 +67,11 @@ class _NotificationScreenState extends State<NotificationScreen> with TickerProv
         icon = Icons.share_rounded;
         color = const Color(0xFFBE123C);
         break;
+      case 'battle':
+      case 'challenge':
+        icon = Icons.sports_kabaddi_rounded;
+        color = const Color(0xFF4F46E5);
+        break;
       default:
         icon = Icons.notifications_rounded;
         color = const Color(0xFF2D6A2D);
@@ -93,6 +99,7 @@ class _NotificationScreenState extends State<NotificationScreen> with TickerProv
       'isRead': sqNotification['is_read'] == 1,
       'icon': icon,
       'color': color,
+      'battleId': parseBattleIdFromNotification(sqNotification),
     };
   }
 
@@ -237,7 +244,7 @@ class _NotificationScreenState extends State<NotificationScreen> with TickerProv
     final bool isRead = notification['isRead'];
 
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         if (!isRead) {
           final userState = context.read<UserBloc>().state;
           if (userState is UserLoaded) {
@@ -247,6 +254,10 @@ class _NotificationScreenState extends State<NotificationScreen> with TickerProv
               userId: userId,
             ));
           }
+        }
+        final battleId = notification['battleId'] as String?;
+        if (battleId != null) {
+          await openBattleInviteSheet(battleId);
         }
       },
       child: Container(

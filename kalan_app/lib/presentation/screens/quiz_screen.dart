@@ -145,7 +145,9 @@ class _QuizScreenState extends State<QuizScreen> {
   Widget build(BuildContext context) {
     return BlocListener<FlashcardBloc, FlashcardState>(
       listener: (context, state) {
-        if (state is FlashcardLoaded) {
+        if (state is FlashcardLoaded &&
+            widget.deckUuid != null &&
+            state.deckUuid == widget.deckUuid) {
           _generateQuiz(state.cards);
         } else if (state is FlashcardError) {
           setState(() => _isLoading = false);

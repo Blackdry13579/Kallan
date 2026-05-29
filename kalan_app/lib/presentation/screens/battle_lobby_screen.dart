@@ -6,7 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../data/repositories/user_repository_impl.dart';
 import '../../services/battle_service.dart';
+import '../../services/battle_invite_service.dart';
+import '../../services/connectivity_service.dart';
 import '../../services/local_ai_service.dart';
+import '../../services/local_battle_service.dart';
+import 'local_battle_qr_screen.dart';
+import 'local_battle_scan_screen.dart';
 import '../../core/utils/level_utils.dart';
 import '../blocs/user/user_bloc.dart';
 import '../blocs/user/user_state.dart';
@@ -60,7 +65,10 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
   Map<String, dynamic>? _selectedOpponent;
   List<dynamic> _searchResults = [];
   bool  _isLoading = false;
+  bool  _deviceOnline = true;
   Timer? _debounce;
+  Timer? _battlesPollTimer;
+  List<Map<String, dynamic>> _battlesCache = [];
   final _searchCtrl = TextEditingController();
 
   static const _themes = [
@@ -73,6 +81,25 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
   void initState() {
     super.initState();
     _loadUserId();
+    _refreshConnectivity();
+    _battlesPollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _refreshBattlesList());
+  }
+
+  Future<void> _refreshBattlesList() async {
+    final uid = _userId;
+    if (uid == null) return;
+    final rows = await BattleInviteService.fetchUserBattles(uid);
+    if (mounted) setState(() => _battlesCache = rows);
+  }
+
+  Future<void> _refreshConnectivity() async {
+    final online = await ConnectivityService().isOnline();
+    if (mounted) {
+      setState(() {
+        _deviceOnline = online;
+        if (!online && _mode == 'ai') _mode = 'theme';
+      });
+    }
   }
 
   Future<void> _loadUserId() async {
@@ -84,6 +111,7 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
   void dispose() {
     _searchCtrl.dispose();
     _debounce?.cancel();
+    _battlesPollTimer?.cancel();
     super.dispose();
   }
 
@@ -94,16 +122,10 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
     } catch (_) { return false; }
   }
 
-  Stream<List<Map<String, dynamic>>> _myBattlesStream() {
-    final uid = _userId;
-    if (uid == null) return Stream.value([]);
-    return SupabaseService.client
-        .from('battles')
-        .stream(primaryKey: ['id'])
-        .order('created_at', ascending: false)
-        .map((list) => list
-            .where((r) => r['inviter_id'] == uid || r['invited_id'] == uid)
-            .toList());
+  void _ensureBattlesPolling() {
+    if (_userId != null && _battlesCache.isEmpty) {
+      _refreshBattlesList();
+    }
   }
 
   // ── BUILD ────────────────────────────────────────────────────────────────────
@@ -114,15 +136,46 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
         if (state is UserLoaded) {
           _userXp     = state.profile['points'] as int?    ?? 0;
           _userPseudo = state.profile['pseudo'] as String? ?? '';
-          _userId   ??= state.profile['uuid']  as String?;
+          final profileUuid = state.profile['uuid'] as String?;
+          if (profileUuid != null && profileUuid != _userId) {
+            _userId = profileUuid;
+            BattleInviteService.instance.start(profileUuid);
+            _refreshBattlesList();
+          }
+          _userId ??= profileUuid;
         }
+        _ensureBattlesPolling();
         return Scaffold(
           backgroundColor: _kBg,
           body: SafeArea(
             child: Column(
               children: [
                 _AppBar(onBack: () => Navigator.pop(context)),
-                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _deviceOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+                        size: 14,
+                        color: _deviceOnline ? const Color(0xFF22C55E) : _kSub,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _deviceOnline
+                            ? 'Défis en ligne (pseudo + Supabase)'
+                            : 'Mode local — crée un QR ou scanne',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _deviceOnline ? const Color(0xFF16A34A) : _kSub,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
                 _TabPills(selected: _tab, onTap: (i) => setState(() => _tab = i)),
                 const SizedBox(height: 10),
                 Expanded(
@@ -145,10 +198,9 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
   Widget _buildArena() {
     if (_userId == null) return const Center(child: CircularProgressIndicator());
 
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _myBattlesStream(),
-      builder: (context, battleSnap) {
-        final all      = battleSnap.data ?? [];
+    return Builder(
+      builder: (context) {
+        final all      = _battlesCache;
         final pending  = all.where((r) => r['invited_id'] == _userId && r['status'] == 'invitation_sent').toList();
         final finished = all.where((r) => r['status'] == 'finished').toList();
         final lastFights = finished.take(3).toList();
@@ -175,6 +227,18 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _ArenaHero(onTap: () => setState(() => _tab = 1)),
+                  if (!_deviceOnline) ...[
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _JoinQrCard(
+                        onScan: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LocalBattleScanScreen()),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   _QuickStatsRow(total: finished.length, wins: wins, losses: losses, xpNet: xpNet),
                   const SizedBox(height: 6),
@@ -327,18 +391,19 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
                 }),
               ),
               const SizedBox(width: 12),
-              _ModeButton(
-                icon: '🤖', label: 'MAÎTRE KALAN', sub: 'IA choisit le thème',
-                selected: _mode == 'ai', selColor: const Color(0xFF7C3AED),
-                onTap: () => setState(() {
-                  _mode = 'ai';
-                  _selectedTheme = null;
-                  _themesExpanded = false;
-                  _selectedOpponent = null;
-                  _searchCtrl.clear();
-                  _searchResults = [];
-                }),
-              ),
+              if (_deviceOnline)
+                _ModeButton(
+                  icon: '🤖', label: 'MAÎTRE KALAN', sub: 'IA choisit le thème',
+                  selected: _mode == 'ai', selColor: const Color(0xFF7C3AED),
+                  onTap: () => setState(() {
+                    _mode = 'ai';
+                    _selectedTheme = null;
+                    _themesExpanded = false;
+                    _selectedOpponent = null;
+                    _searchCtrl.clear();
+                    _searchResults = [];
+                  }),
+                ),
             ]),
           ),
 
@@ -406,9 +471,11 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
                       controller: _searchCtrl,
                       onChanged: _onSearch,
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                      decoration: const InputDecoration(
-                        hintText: 'Taper le pseudo de ton ami...',
-                        hintStyle: TextStyle(color: _kSub, fontWeight: FontWeight.w600),
+                      decoration: InputDecoration(
+                        hintText: _deviceOnline
+                            ? 'Taper le pseudo de ton ami...'
+                            : 'Pseudo de ton ami (mode hors ligne)...',
+                        hintStyle: const TextStyle(color: _kSub, fontWeight: FontWeight.w600),
                         border: InputBorder.none, isDense: true,
                         contentPadding: EdgeInsets.symmetric(vertical: 14),
                       ),
@@ -458,15 +525,17 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
                         title: Text(u['pseudo'] as String? ?? 'Inconnu',
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                         subtitle: Text(
-                          online
-                            ? '🟢 En ligne · Niveau ${LevelUtils.getLevelInfo(u['points'] ?? 0).level}'
-                            : '⚫ Hors ligne · Niveau ${LevelUtils.getLevelInfo(u['points'] ?? 0).level}',
+                          !_deviceOnline
+                              ? '📴 Défi local par QR'
+                              : online
+                                  ? '🟢 En ligne · Niveau ${LevelUtils.getLevelInfo(u['points'] ?? 0).level}'
+                                  : '⚫ Hors ligne · Niveau ${LevelUtils.getLevelInfo(u['points'] ?? 0).level}',
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kSub),
                         ),
                         trailing: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF4F46E5)),
                         onTap: () => setState(() {
                           _selectedOpponent = u as Map<String, dynamic>;
-                          _searchCtrl.text  = (u as Map<String, dynamic>)['pseudo'] as String? ?? '';
+                          _searchCtrl.text  = (u)['pseudo'] as String? ?? '';
                           _searchResults    = [];
                         }),
                       );
@@ -474,6 +543,19 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
                   ),
                 ),
               ),
+          ],
+
+          if (!_deviceOnline) ...[
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _JoinQrCard(
+                onScan: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LocalBattleScanScreen()),
+                ),
+              ),
+            ),
           ],
 
           // Récap
@@ -489,6 +571,7 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
                 canSend:     canSend,
                 isLoading:   _isLoading,
                 hasEnoughXp: _userXp >= _stake,
+                isLocalMode: !_deviceOnline,
                 onClear: () => setState(() {
                   _selectedOpponent = null;
                   _mode = 'theme';
@@ -508,20 +591,76 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
   void _onSearch(String q) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () async {
-      if (q.trim().length < 2) {
+      final trimmed = q.trim();
+      if (trimmed.length < 2) {
         if (mounted) setState(() => _searchResults = []);
+        return;
+      }
+      if (!_deviceOnline) {
+        if (mounted) {
+          setState(() {
+            _searchResults = [
+              {
+                'uuid': 'local-opponent',
+                'pseudo': trimmed,
+                'points': 0,
+                'last_active': null,
+              },
+            ];
+          });
+        }
         return;
       }
       try {
         final repo = context.read<UserRepositoryImpl>();
-        final results = await repo.searchUsers(q.trim());
+        final results = await repo.searchUsers(trimmed);
         if (mounted) setState(() => _searchResults = results);
       } catch (_) {}
     });
   }
 
+  Future<void> _sendLocalChallenge() async {
+    if (_selectedOpponent == null || _selectedTheme == null) return;
+    setState(() => _isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hostId = _userId ?? prefs.getString('current_user_uuid') ?? '';
+      final content = await LocalAIService()
+          .generateBattleContentOffline(theme: _selectedTheme!);
+      final battle = LocalBattleService.create(
+        hostId: hostId,
+        hostPseudo: _userPseudo.isNotEmpty ? _userPseudo : 'Toi',
+        guestPseudo: _selectedOpponent!['pseudo'] as String? ?? 'Ami',
+        theme: _selectedTheme!,
+        xpBet: _stake,
+        content: content,
+      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LocalBattleQrScreen(battle: battle, isHost: true),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Impossible de créer le défi local : $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _sendChallenge() async {
     if (_selectedOpponent == null) return;
+
+    if (!_deviceOnline && _mode != 'ai') {
+      await _sendLocalChallenge();
+      return;
+    }
     final isAI = _mode == 'ai';
     if (isAI && (_selectedTheme == null || _selectedTheme!.isEmpty)) {
       final randomThemes = ['Mathématiques', 'SVT', 'Physique-Chimie', 'Français', 'Histoire-Géo', 'Anglais'];
@@ -559,11 +698,17 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
       if (inviterId.isEmpty) return;
 
       final service = BattleService();
+      final invitedId = _selectedOpponent!['uuid'] as String?;
+      if (invitedId == null || invitedId.isEmpty) {
+        throw Exception('Adversaire invalide');
+      }
+
       final battle  = await service.createBattle(
         inviterId: inviterId,
-        invitedId: _selectedOpponent!['uuid'] as String,
+        invitedId: invitedId,
         theme:     _selectedTheme,
         xpBet:     _stake,
+        inviterPseudo: _userPseudo.isNotEmpty ? _userPseudo : null,
       );
 
       if (isAI) {
@@ -584,10 +729,10 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
           ),
         ));
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Impossible d\'envoyer le défi. Vérifie ta connexion.')),
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
         );
       }
     } finally {
@@ -601,10 +746,9 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
   Widget _buildHistory() {
     if (_userId == null) return const Center(child: CircularProgressIndicator());
 
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _myBattlesStream(),
-      builder: (context, battleSnap) {
-        final finished = (battleSnap.data ?? []).where((r) => r['status'] == 'finished').toList();
+    return Builder(
+      builder: (context) {
+        final finished = _battlesCache.where((r) => r['status'] == 'finished').toList();
         final wins   = finished.where((r) => r['winner_id'] == _userId).length;
         final losses = finished.length - wins;
         final xpNet  = finished.fold<int>(0, (acc, r) {
@@ -1119,12 +1263,13 @@ class _RecapCard extends StatelessWidget {
   final String myPseudo, theme;
   final Map<String, dynamic> opponent;
   final int stake;
-  final bool canSend, isLoading, hasEnoughXp;
+  final bool canSend, isLoading, hasEnoughXp, isLocalMode;
   final VoidCallback onClear, onSend;
   const _RecapCard({
     required this.myPseudo, required this.opponent, required this.theme,
     required this.stake, required this.canSend, required this.isLoading,
     required this.hasEnoughXp,
+    this.isLocalMode = false,
     required this.onClear, required this.onSend,
   });
 
@@ -1181,7 +1326,7 @@ class _RecapCard extends StatelessWidget {
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                 : Text(
                     canSend
-                      ? 'ENVOYER LE DÉFI ⚔️'
+                      ? (isLocalMode ? 'CRÉER LE QR ⚔️' : 'ENVOYER LE DÉFI ⚔️')
                       : (!hasEnoughXp
                           ? 'SOLDE INSUFFISANT'
                           : (opponent['uuid'] == null ? 'Sélectionne un adversaire' : 'Sélectionne un thème')),
@@ -1193,6 +1338,54 @@ class _RecapCard extends StatelessWidget {
     );
   }
 
+}
+
+class _JoinQrCard extends StatelessWidget {
+  final VoidCallback onScan;
+  const _JoinQrCard({required this.onScan});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onScan,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _kGreen.withValues(alpha: 0.4), width: 1.5),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: _kGreen.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.qr_code_scanner_rounded, color: _kGreen, size: 28),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Rejoindre un défi',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: _kText)),
+                  SizedBox(height: 2),
+                  Text('Scanne le QR de ton ami',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: _kSub)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: _kSub),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _PlayerBadge extends StatelessWidget {

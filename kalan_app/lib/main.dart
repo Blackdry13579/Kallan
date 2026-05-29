@@ -1,4 +1,5 @@
 import 'package:kalan_app/presentation/screens/splash_screen.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -7,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kalan_app/core/theme/app_theme.dart';
 import 'package:kalan_app/core/utils/text_scale.dart';
 import 'package:kalan_app/data/local/database_helper.dart';
+import 'package:kalan_app/data/local/database_init.dart';
 import 'package:kalan_app/data/remote/supabase_service.dart';
 import 'package:kalan_app/data/repositories/deck_repository_impl.dart';
 import 'package:kalan_app/data/repositories/flashcard_repository_impl.dart';
@@ -25,18 +27,29 @@ import 'package:kalan_app/presentation/blocs/leaderboard/leaderboard_bloc.dart';
 import 'package:kalan_app/presentation/blocs/notification/notification_bloc.dart';
 import 'package:kalan_app/data/repositories/leaderboard_repository_impl.dart';
 import 'package:kalan_app/services/sync_service.dart';
+import 'package:kalan_app/core/navigation/app_navigator_key.dart';
 import 'package:kalan_app/presentation/widgets/celebration_listener.dart';
 import 'package:kalan_app/presentation/widgets/notification_signal_banner.dart';
 import 'package:kalan_app/services/connectivity_service.dart';
 import 'package:kalan_app/services/deep_link_service.dart';
 import 'package:app_links/app_links.dart';
-
-final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
+  await GoogleFonts.pendingFonts([
+    GoogleFonts.fredoka(),
+    GoogleFonts.notoSans(),
+  ]);
+
+  await initLocalDatabase();
+
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint('Fichier .env non chargé: $e');
+  }
 
   String supabaseUrl = const String.fromEnvironment('SUPABASE_URL');
   String supabaseKey = const String.fromEnvironment('SUPABASE_ANON_KEY');
@@ -97,7 +110,11 @@ void main() async {
       child: MultiBlocProvider(
         providers: [
           BlocProvider<DeckBloc>(
-            create: (_) => DeckBloc(deckRepo)..add(const LoadDecks()),
+            create: (_) {
+              final bloc = DeckBloc(deckRepo);
+              if (!kIsWeb) bloc.add(const LoadDecks());
+              return bloc;
+            },
           ),
           BlocProvider<FlashcardBloc>(
             create: (_) => FlashcardBloc(flashcardRepo),

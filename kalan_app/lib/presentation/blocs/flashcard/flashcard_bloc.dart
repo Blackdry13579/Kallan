@@ -11,7 +11,7 @@ class FlashcardBloc extends Bloc<FlashcardEvent, FlashcardState> {
       emit(FlashcardLoading());
       try {
         final cards = await _repository.getFlashcardsByDeck(event.deckUuid);
-        emit(FlashcardLoaded(cards));
+        emit(FlashcardLoaded(event.deckUuid, cards));
       } catch (e) {
         emit(FlashcardError(e.toString()));
       }

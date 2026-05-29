@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 // Constantes de style locales et constantes de compilation pour éviter les erreurs Dart
 const Color _primaryColor = Color(0xFF2D6A2D);
@@ -19,7 +18,8 @@ class AboutScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _textPrimary),
+          icon:
+              const Icon(Icons.arrow_back_ios_new_rounded, color: _textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -76,7 +76,7 @@ class AboutScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: _primaryColor.withValues(alpha:0.1),
+                color: _primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
@@ -94,15 +94,17 @@ class AboutScreen extends StatelessWidget {
             _buildInfoCard(
               icon: Icons.lightbulb_outline_rounded,
               title: "Qu'est-ce que KALAN ?",
-              content: "KALAN (qui signifie 'apprendre' en Dioula) est le premier cahier numérique intelligent pensé spécifiquement pour l'élève africain.",
+              content:
+                  "KALAN (qui signifie 'apprendre' en Dioula) est le premier cahier numérique intelligent pensé spécifiquement pour l'élève africain.",
               iconColor: const Color(0xFFF59E0B),
             ),
             const SizedBox(height: 16),
-            
+
             _buildInfoCard(
               icon: Icons.public_rounded,
               title: "Pourquoi a-t-il été créé ?",
-              content: "Pour démocratiser l'accès à l'Intelligence Artificielle. KALAN a été conçu pour fonctionner 100% hors ligne afin que les élèves, notamment au Burkina Faso, puissent réviser partout sans se soucier des connexions Internet capricieuses ou coûteuses.",
+              content:
+                  "Pour démocratiser l'accès à l'Intelligence Artificielle. KALAN a été conçu pour fonctionner 100% hors ligne afin que les élèves, notamment au Burkina Faso, puissent réviser partout sans se soucier des connexions Internet capricieuses ou coûteuses.",
               iconColor: const Color(0xFF3B82F6),
             ),
             const SizedBox(height: 16),
@@ -113,10 +115,11 @@ class AboutScreen extends StatelessWidget {
             _buildInfoCard(
               icon: Icons.trending_up_rounded,
               title: "Comment il peut t'aider ?",
-              content: "Gagne un temps précieux dans tes révisions, retiens tes leçons sur le long terme et améliore tes résultats scolaires grâce à une méthode d'apprentissage espacée prouvée scientifiquement.",
+              content:
+                  "Gagne un temps précieux dans tes révisions, retiens tes leçons sur le long terme et améliore tes résultats scolaires grâce à une méthode d'apprentissage espacée prouvée scientifiquement.",
               iconColor: const Color(0xFF10B981),
             ),
-            
+
             const SizedBox(height: 40),
             const Text(
               'Développé avec ❤️ pour l\'éducation en Afrique.',
@@ -147,7 +150,7 @@ class AboutScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -161,7 +164,7 @@ class AboutScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha:0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: iconColor, size: 24),
@@ -199,10 +202,11 @@ class AboutScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _primaryColor.withValues(alpha:0.2), width: 1),
+        border:
+            Border.all(color: _primaryColor.withValues(alpha: 0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: _primaryColor.withValues(alpha:0.05),
+            color: _primaryColor.withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -216,10 +220,11 @@ class AboutScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: _primaryColor.withValues(alpha:0.1),
+                  color: _primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.psychology_rounded, color: _primaryColor, size: 24),
+                child: const Icon(Icons.psychology_rounded,
+                    color: _primaryColor, size: 24),
               ),
               const SizedBox(width: 16),
               const Expanded(

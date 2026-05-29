@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'waiting_room_screen.dart';
 import '../../services/battle_service.dart';
 
 class ChallengeResultScreen extends StatefulWidget {
@@ -10,6 +9,7 @@ class ChallengeResultScreen extends StatefulWidget {
   final int scoreYou;
   final int scoreThem;
   final String battleId;
+  final bool isLocalBattle;
 
   const ChallengeResultScreen({
     super.key,
@@ -19,6 +19,7 @@ class ChallengeResultScreen extends StatefulWidget {
     required this.scoreYou,
     required this.scoreThem,
     required this.battleId,
+    this.isLocalBattle = false,
   });
 
   @override
@@ -31,7 +32,9 @@ class _ChallengeResultScreenState extends State<ChallengeResultScreen> {
   @override
   void initState() {
     super.initState();
-    _battleService.finishBattle(widget.battleId);
+    if (!widget.isLocalBattle) {
+      _battleService.finishBattle(widget.battleId);
+    }
   }
 
   @override

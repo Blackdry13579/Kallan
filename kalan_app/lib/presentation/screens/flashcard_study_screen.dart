@@ -21,6 +21,7 @@ class FlashcardStudyScreen extends StatefulWidget {
 class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
   int _currentIndex = 0;
   bool _showAnswer = false;
+  bool _flipReveal = false;
   Timer? _timer;
   int _secondsRemaining = 5;
   List<Flashcard> _sessionCards = [];
@@ -42,6 +43,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
     setState(() {
       _secondsRemaining = 5;
       _showAnswer = false;
+      _flipReveal = false;
     });
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsRemaining > 0) {
@@ -55,6 +57,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
         if (mounted) {
           AudioService().play('swipe');
           setState(() {
+            _flipReveal = true;
             _showAnswer = true;
           });
         }
@@ -68,6 +71,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
     }
     if (_currentIndex < total - 1) {
       setState(() {
+        _flipReveal = false;
         _currentIndex++;
         _showAnswer = false;
       });
@@ -171,7 +175,19 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
       body: SafeArea(
         child: BlocConsumer<FlashcardBloc, FlashcardState>(
           listener: (context, state) {
-            if (state is FlashcardLoaded && state.cards.isNotEmpty) {
+            if (state is FlashcardLoading) {
+              _timer?.cancel();
+              setState(() {
+                _timer = null;
+                _sessionCards = [];
+                _currentIndex = 0;
+                _showAnswer = false;
+                _flipReveal = false;
+              });
+            }
+            if (state is FlashcardLoaded &&
+                state.deckUuid == widget.deckUuid &&
+                state.cards.isNotEmpty) {
               if (_sessionCards.isEmpty) {
                 setState(() {
                   final List<Flashcard> allCards = List.from(state.cards);
@@ -214,16 +230,21 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
                   Expanded(
                     child: Center(
                       child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 400),
+                        duration: Duration(
+                            milliseconds: _flipReveal ? 400 : 0),
                         transitionBuilder:
                             (Widget child, Animation<double> animation) {
+                          if (!_flipReveal) return child;
                           return RotationYTransition(
                               animation: animation, child: child);
                         },
-                        child: _showAnswer
-                            ? _buildCardSide(cards[_currentIndex].answer, true)
-                            : _buildCardSide(
-                                cards[_currentIndex].question, false),
+                        child: _buildCardSide(
+                          _showAnswer
+                              ? cards[_currentIndex].answer
+                              : cards[_currentIndex].question,
+                          _showAnswer,
+                          key: ValueKey('$_currentIndex-$_showAnswer'),
+                        ),
                       ),
                     ),
                   ),
@@ -326,9 +347,9 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
     );
   }
 
-  Widget _buildCardSide(String text, bool isAnswer) {
+  Widget _buildCardSide(String text, bool isAnswer, {required Key key}) {
     return Container(
-      key: ValueKey(isAnswer),
+      key: key,
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(

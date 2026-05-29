@@ -4,6 +4,9 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../data/local/database_helper.dart';
+import '../data/models/deck_model.dart';
+import '../data/models/flashcard_model.dart';
+import '../data/models/user_model.dart';
 import '../data/remote/supabase_service.dart';
 
 class SyncService {
@@ -38,7 +41,11 @@ class SyncService {
           .eq('uuid', userId)
           .single();
       
-      await db.insert('users', userProfile, conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert(
+        'users',
+        UserModel.fromMap(userProfile).toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
 
       // 2. Récupérer les Decks
       final decks = await SupabaseService.client
@@ -46,20 +53,31 @@ class SyncService {
           .select()
           .eq('user_id', userId);
       
-      for (var deck in decks) {
-        await db.insert('decks', deck, conflictAlgorithm: ConflictAlgorithm.replace);
+      for (final deck in decks) {
+        await db.insert(
+          'decks',
+          DeckModel.fromSupabaseJson(Map<String, dynamic>.from(deck)).toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
 
       // 3. Récupérer les Flashcards associées
-      final deckUuids = decks.map((d) => d['uuid'] as String).toList();
+      final deckUuids = decks
+          .map((d) => (d['uuid'] ?? d['id']) as String)
+          .toList();
       if (deckUuids.isNotEmpty) {
         final cards = await SupabaseService.client
             .from('flashcards')
             .select()
             .inFilter('deck_id', deckUuids);
-        
-        for (var card in cards) {
-          await db.insert('flashcards', card, conflictAlgorithm: ConflictAlgorithm.replace);
+
+        for (final card in cards) {
+          await db.insert(
+            'flashcards',
+            FlashcardModel.fromSupabaseJson(Map<String, dynamic>.from(card))
+                .toMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
         }
       }
 

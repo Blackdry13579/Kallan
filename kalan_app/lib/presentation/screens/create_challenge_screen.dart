@@ -460,18 +460,24 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      final inviterId = SupabaseService.currentUser?.id ?? prefs.getString('current_user_uuid') ?? '';
+      final inviterId = prefs.getString('current_user_uuid') ?? '';
       if (inviterId.isEmpty) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Impossible d\'identifier ton compte. Reconnecte-toi.')));
         return;
       }
       final battleService = BattleService();
+      String? inviterPseudo;
+      final userState = context.read<UserBloc>().state;
+      if (userState is UserLoaded) {
+        inviterPseudo = userState.profile['pseudo'] as String?;
+      }
 
       final battle = await battleService.createBattle(
         inviterId: inviterId,
-        invitedId: _selectedUser!['uuid'],
+        invitedId: _selectedUser!['uuid'] as String,
         theme: _selectedTheme,
         xpBet: _xpBet,
+        inviterPseudo: inviterPseudo,
       );
 
       // Si c'est l'IA, on accepte et génère immédiatement
@@ -501,9 +507,11 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Impossible d\'envoyer le défi. Vérifie ta connexion et réessaie.')),
       );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

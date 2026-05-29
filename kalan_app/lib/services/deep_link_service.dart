@@ -1,4 +1,3 @@
-import 'package:kalan_app/data/remote/supabase_service.dart';
 import 'package:kalan_app/domain/entities/deck.dart';
 
 class DeepLinkService {

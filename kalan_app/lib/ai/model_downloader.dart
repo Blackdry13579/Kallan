@@ -21,6 +21,7 @@ class ModelDownloader {
 
   /// Importe le modèle depuis le stockage externe s'il a été copié manuellement.
   static Future<bool> importModelFromExternalStorage() async {
+    if (kIsWeb) return false;
     try {
       final docsDir   = await getApplicationDocumentsDirectory();
       final target    = File('${docsDir.path}/$_fileName');
@@ -52,6 +53,7 @@ class ModelDownloader {
 
   /// Vérifie si le modèle est installé.
   static Future<bool> isModelDownloaded() async {
+    if (kIsWeb) return false;
     if (await importModelFromExternalStorage()) return true;
     try {
       return await FlutterGemmaPlugin.instance.modelManager.isModelInstalled;
@@ -65,6 +67,9 @@ class ModelDownloader {
   /// Émet des valeurs 0.0 → 1.0 (progression).
   /// Émet -1.0 en cas d'erreur.
   static Stream<double> downloadModel() {
+    if (kIsWeb) {
+      return Stream<double>.fromIterable([-1.0]);
+    }
     final ctrl = StreamController<double>();
     _downloadParallel(ctrl);
     return ctrl.stream;

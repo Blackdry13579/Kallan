@@ -10,10 +10,11 @@ abstract class FlashcardState extends Equatable {
 class FlashcardInitial extends FlashcardState {}
 class FlashcardLoading extends FlashcardState {}
 class FlashcardLoaded extends FlashcardState {
+  final String deckUuid;
   final List<Flashcard> cards;
-  const FlashcardLoaded(this.cards);
+  const FlashcardLoaded(this.deckUuid, this.cards);
   @override
-  List<Object?> get props => [cards];
+  List<Object?> get props => [deckUuid, cards];
 }
 class FlashcardError extends FlashcardState {
   final String message;

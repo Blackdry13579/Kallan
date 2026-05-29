@@ -209,8 +209,12 @@ Règles :
     int frScore = 0, enScore = 0;
     const frWords = [' le ', ' la ', ' les ', ' de ', ' du ', ' des ', ' une ', ' et ', ' est ', ' sont ', ' dans ', ' pour ', ' avec ', ' qui ', ' que ', ' ce ', ' se ', ' sur ', ' au ', ' il ', ' elle ', ' nous ', ' vous '];
     const enWords = [' the ', ' is ', ' are ', ' was ', ' were ', ' have ', ' has ', ' had ', ' will ', ' would ', ' can ', ' could ', ' this ', ' that ', ' from ', ' with ', ' and ', ' but ', ' for ', ' in ', ' of ', ' to ', ' they ', ' their '];
-    for (final w in frWords) if (lower.contains(w)) frScore++;
-    for (final w in enWords) if (lower.contains(w)) enScore++;
+    for (final w in frWords) {
+      if (lower.contains(w)) frScore++;
+    }
+    for (final w in enWords) {
+      if (lower.contains(w)) enScore++;
+    }
     return enScore > frScore ? 'anglais' : 'français';
   }
 
@@ -266,10 +270,10 @@ Q1:''';
 
     if (hasNotes && isQuestion) {
       casNum = 1;
-      prompt = _buildCas1Prompt(trimmed, notes!.trim());
+      prompt = _buildCas1Prompt(trimmed, notes.trim());
     } else if (hasNotes) {
       casNum = 2;
-      prompt = _buildCas2Prompt(trimmed, notes!.trim());
+      prompt = _buildCas2Prompt(trimmed, notes.trim());
     } else {
       casNum = 3;
       prompt = _buildCas3Prompt(trimmed);
@@ -405,9 +409,280 @@ JSON : {
   // GÉNÉRATION CONTENU BATAILLE (Qwen uniquement — jamais Gemma)
   // ═══════════════════════════════════════════════════════════════════════════
 
+  /// Contenu de défi hors-ligne (compact pour QR) — templates par matière.
+  /// Corrige les QCM avec « Option B » ou options invalides (défis déjà sauvegardés).
+  Map<String, dynamic> repairBattleContent(
+    Map<String, dynamic> content, {
+    String? theme,
+  }) =>
+      _normalizeBattleContent(content, theme: theme);
+
+  Future<Map<String, dynamic>> generateBattleContentOffline({required String theme}) async {
+    if (await isOfflineGemmaReady()) {
+      try {
+        final prompt =
+            'Thème: $theme. Donne 5 questions courtes avec réponses pour un quiz scolaire.';
+        final result = await generateFlashcards(text: prompt, userSubject: theme);
+        final rawCards = result['flashcards'] as List? ?? [];
+        if (rawCards.length >= 3) {
+          final flashcards = rawCards.take(5).map((c) {
+            final m = Map<String, dynamic>.from(c as Map);
+            return {
+              'question': m['question']?.toString() ?? '',
+              'answer': m['answer']?.toString() ?? '',
+            };
+          }).toList();
+          final quizzes = _flashcardsToQuizzes(flashcards, theme: theme);
+          return {'flashcards': flashcards, 'quizzes': quizzes};
+        }
+      } catch (e) {
+        debugPrint('[KALAN AI] Offline battle Gemma: $e');
+      }
+    }
+    return _templateBattleContent(theme);
+  }
+
+  bool _isPlaceholderOption(String option) {
+    final t = option.trim();
+    if (t.isEmpty) return true;
+    if (RegExp(r'^Option\s+[A-Da-d]$', caseSensitive: false).hasMatch(t)) {
+      return true;
+    }
+    if (RegExp(r'^[A-D]$').hasMatch(t)) return true;
+    return false;
+  }
+
+  bool _quizzesHavePlaceholderOptions(List<Map<String, dynamic>> quizzes) {
+    if (quizzes.isEmpty) return true;
+    for (final quiz in quizzes) {
+      final options = (quiz['options'] as List?)
+              ?.map((e) => e.toString().trim())
+              .where((o) => o.isNotEmpty)
+              .toList() ??
+          [];
+      if (options.length < 4) return true;
+      final bad = options.where(_isPlaceholderOption).length;
+      if (bad >= 1) return true;
+    }
+    return false;
+  }
+
+  List<String> _buildOptionsForAnswer(
+    String correct,
+    List<Map<String, dynamic>> flashcards, {
+    String? theme,
+    String? excludeQuestion,
+  }) {
+    final used = <String>{correct};
+    final options = <String>[correct];
+    final pool = <String>[];
+
+    for (final card in flashcards) {
+      if (excludeQuestion != null &&
+          card['question']?.toString() == excludeQuestion) {
+        continue;
+      }
+      final a = card['answer']?.toString().trim() ?? '';
+      if (a.isNotEmpty && a != correct) pool.add(a);
+    }
+
+    final bank = _themeQuestionBank[theme] ?? _themeQuestionBank['Mélange']!;
+    for (final entry in bank) {
+      final a = entry['a'] as String;
+      if (a != correct) pool.add(a);
+    }
+    pool.shuffle();
+
+    for (final w in pool) {
+      if (options.length >= 4) break;
+      if (!used.contains(w)) {
+        options.add(w);
+        used.add(w);
+      }
+    }
+
+    while (options.length < 4) {
+      final filler = 'Autre réponse ${options.length}';
+      if (!used.contains(filler)) {
+        options.add(filler);
+        used.add(filler);
+      } else {
+        break;
+      }
+    }
+
+    options.shuffle();
+    return options.take(4).toList();
+  }
+
+  List<Map<String, dynamic>> _flashcardsToQuizzes(
+    List<Map<String, dynamic>> flashcards, {
+    String? theme,
+  }) {
+    final quizzes = <Map<String, dynamic>>[];
+    for (final card in flashcards) {
+      final q = card['question']?.toString() ?? '';
+      final correct = card['answer']?.toString() ?? '';
+      if (q.isEmpty || correct.isEmpty) continue;
+      quizzes.add({
+        'question': q,
+        'options': _buildOptionsForAnswer(
+          correct,
+          flashcards,
+          theme: theme,
+          excludeQuestion: q,
+        ),
+        'correctAnswer': correct,
+      });
+    }
+    return quizzes;
+  }
+
+  Map<String, dynamic> _normalizeBattleContent(
+    Map<String, dynamic> parsed, {
+    String? theme,
+  }) {
+    final rawCards = parsed['flashcards'] as List? ?? [];
+    final flashcards = rawCards
+        .map((c) {
+          final m = Map<String, dynamic>.from(c as Map);
+          return {
+            'question': (m['question'] ?? m['q'] ?? '').toString().trim(),
+            'answer': (m['answer'] ?? m['a'] ?? '').toString().trim(),
+          };
+        })
+        .where(
+          (c) =>
+              c['question']!.toString().isNotEmpty &&
+              c['answer']!.toString().isNotEmpty,
+        )
+        .toList();
+
+    var quizzes = (parsed['quizzes'] as List?)
+            ?.map((q) => Map<String, dynamic>.from(q as Map))
+            .toList() ??
+        [];
+
+    if (_quizzesHavePlaceholderOptions(quizzes) && flashcards.length >= 3) {
+      quizzes = _flashcardsToQuizzes(flashcards, theme: theme);
+    } else {
+      quizzes = quizzes
+          .map(
+            (q) => _ensureQuizOptions(q, flashcards, theme: theme),
+          )
+          .toList();
+    }
+
+    if (quizzes.length < 3 && flashcards.length >= 3) {
+      quizzes = _flashcardsToQuizzes(flashcards, theme: theme);
+    }
+
+    return {
+      'flashcards': flashcards.take(10).toList(),
+      'quizzes': quizzes.take(5).toList(),
+    };
+  }
+
+  Map<String, dynamic> _ensureQuizOptions(
+    Map<String, dynamic> quiz,
+    List<Map<String, dynamic>> flashcards, {
+    String? theme,
+  }) {
+    final question = (quiz['question'] ?? '').toString();
+    var correct =
+        (quiz['correctAnswer'] ?? quiz['answer'] ?? '').toString().trim();
+    var options = (quiz['options'] as List?)
+            ?.map((e) => e.toString().trim())
+            .where((o) => o.isNotEmpty && !_isPlaceholderOption(o))
+            .toList() ??
+        [];
+
+    if (correct.isNotEmpty && !options.contains(correct)) {
+      options.insert(0, correct);
+    }
+    if (correct.isEmpty && options.isNotEmpty) {
+      correct = options.first;
+    }
+
+    final built = _buildOptionsForAnswer(
+      correct,
+      flashcards,
+      theme: theme,
+      excludeQuestion: question,
+    );
+
+    return {
+      'question': question,
+      'options': built,
+      'correctAnswer': correct,
+    };
+  }
+
+  Map<String, dynamic> _templateBattleContent(String theme) {
+    final bank = _themeQuestionBank[theme] ?? _themeQuestionBank['Mélange']!;
+    final flashcards = bank
+        .take(5)
+        .map((e) => {'question': e['q'], 'answer': e['a']})
+        .toList();
+    final quizzes = _flashcardsToQuizzes(flashcards, theme: theme);
+    return {'flashcards': flashcards, 'quizzes': quizzes};
+  }
+
+  static const Map<String, List<Map<String, String>>> _themeQuestionBank = {
+    'Mathématiques': [
+      {'q': 'Combien font 7 × 8 ?', 'a': '56'},
+      {'q': 'Quelle est la racine carrée de 81 ?', 'a': '9'},
+      {'q': 'Un triangle dont deux côtés sont égaux est…', 'a': 'isocèle'},
+      {'q': 'π arrondi à deux décimales ?', 'a': '3,14'},
+      {'q': '15 % de 200 ?', 'a': '30'},
+    ],
+    'SVT': [
+      {'q': 'Organe de la photosynthèse ?', 'a': 'chloroplaste'},
+      {'q': 'Molécule porteuse de l\'information génétique ?', 'a': 'ADN'},
+      {'q': 'Gaz absorbé par les plantes ?', 'a': 'CO₂'},
+      {'q': 'Unité de base du vivant ?', 'a': 'cellule'},
+      {'q': 'Organe qui pompe le sang ?', 'a': 'cœur'},
+    ],
+    'Physique-Chimie': [
+      {'q': 'Symbole chimique de l\'eau ?', 'a': 'H₂O'},
+      {'q': 'Unité de la force ?', 'a': 'newton'},
+      {'q': 'Vitesse = distance / … ?', 'a': 'temps'},
+      {'q': 'Planète la plus proche du Soleil ?', 'a': 'Mercure'},
+      {'q': 'État de l\'eau à 100 °C (pression normale) ?', 'a': 'gaz'},
+    ],
+    'Français': [
+      {'q': 'Synonyme de « rapide » ?', 'a': 'vite'},
+      {'q': 'Nombre de syllabes dans « école » ?', 'a': '2'},
+      {'q': 'Auteur des « Misérables » ?', 'a': 'Victor Hugo'},
+      {'q': 'Nature du mot « belle » ?', 'a': 'adjectif'},
+      {'q': 'Contraire de « ancien » ?', 'a': 'nouveau'},
+    ],
+    'Histoire-Géo': [
+      {'q': 'Capitale du Sénégal ?', 'a': 'Dakar'},
+      {'q': 'Continent du Mali ?', 'a': 'Afrique'},
+      {'q': 'Année de l\'indépendance du Ghana (1957) — siècle ?', 'a': 'XXe'},
+      {'q': 'Fleuve le plus long d\'Afrique ?', 'a': 'Nil'},
+      {'q': 'Océan à l\'ouest de l\'Afrique ?', 'a': 'Atlantique'},
+    ],
+    'Anglais': [
+      {'q': 'Traduction de « book » ?', 'a': 'livre'},
+      {'q': 'Pluriel de « child » ?', 'a': 'children'},
+      {'q': '« Hello » en français ?', 'a': 'bonjour'},
+      {'q': 'Contraire de « hot » ?', 'a': 'cold'},
+      {'q': '« Thank you » signifie…', 'a': 'merci'},
+    ],
+    'Mélange': [
+      {'q': 'Capitale de la France ?', 'a': 'Paris'},
+      {'q': '2 + 2 × 3 ?', 'a': '8'},
+      {'q': 'Symbole chimique de l\'or ?', 'a': 'Au'},
+      {'q': '« Bonjour » en anglais ?', 'a': 'hello'},
+      {'q': 'Planète bleue ?', 'a': 'Terre'},
+    ],
+  };
+
   Future<Map<String, dynamic>> generateBattleContent({required String theme}) async {
     if (!await canUseOnlineAI()) {
-      throw Exception('Connexion internet requise pour générer le contenu du défi.');
+      return generateBattleContentOffline(theme: theme);
     }
 
     const systemMsg =
@@ -416,16 +691,15 @@ JSON : {
     final userMsg = '''Thème du défi : "$theme"
 
 ### MISSION :
-Génère 10 flashcards et 10 QCM.
-Pour chaque réponse :
-1. Vérifie via Web Search.
-2. Si contradiction -> mets "answer": null et un "warning".
-3. RÉPONSE = FRAGMENT MINIMAL.
+Génère 5 flashcards et 5 QCM.
+Pour chaque QCM : 4 options textuelles DIFFÉRENTES et plausibles (jamais "Option A/B/C/D").
+La correctAnswer doit être EXACTEMENT l'une des 4 options (même texte).
+Utilise les réponses des autres questions comme mauvaises réponses quand c'est cohérent.
 
 ### FORMAT JSON STRICT :
 {
   "flashcards": [{"question": "...", "answer": "...", "source": "web", "warning": null}],
-  "quizzes": [{"question": "...", "options": ["A","B","C","D"], "correctAnswer": "...", "source": "web", "warning": null}]
+  "quizzes": [{"question": "...", "options": ["livre", "stylo", "table", "chaise"], "correctAnswer": "livre", "source": "web", "warning": null}]
 }''';
 
     for (final model in _models) {
@@ -456,7 +730,7 @@ Pour chaque réponse :
           
           final parsed = _extractJson(raw);
           if (parsed != null && parsed['flashcards'] != null) {
-            return parsed;
+            return _normalizeBattleContent(parsed, theme: theme);
           }
         }
       } catch (e) {

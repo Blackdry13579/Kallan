@@ -26,7 +26,16 @@ class NotificationRepositoryImpl implements NotificationRepository {
             .eq('user_id', userId);
 
         for (var item in remoteData as List) {
-          // Insérer localement pour fusionner
+          var message = item['message']?.toString() ?? '';
+          if (item['type'] == 'battle' && item['data'] != null) {
+            final data = item['data'];
+            final battleId = data is Map
+                ? data['battle_id']?.toString()
+                : null;
+            if (battleId != null && !message.contains('battle:')) {
+              message = '$message · battle:$battleId';
+            }
+          }
           await db.insert(
             'notifications',
             {
@@ -34,7 +43,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
               'user_id': item['user_id'],
               'type': item['type'],
               'title': item['title'],
-              'message': item['message'],
+              'message': message,
               'is_read': item['is_read'] == true ? 1 : 0,
               'created_at': item['created_at'],
             },

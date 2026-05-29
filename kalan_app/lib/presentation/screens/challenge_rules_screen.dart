@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'duel_flashcard_review_screen.dart';
+import 'duel_game_screen.dart';
 
 class ChallengeRulesScreen extends StatelessWidget {
   final String opponentName;
   final String? opponentAvatar;
   final int stake;
   final String battleId;
+  final Map<String, dynamic>? battleContent;
+  final bool isLocalBattle;
 
   const ChallengeRulesScreen({
     super.key,
@@ -14,6 +16,8 @@ class ChallengeRulesScreen extends StatelessWidget {
     this.opponentAvatar,
     required this.stake,
     required this.battleId,
+    this.battleContent,
+    this.isLocalBattle = false,
   });
 
   @override
@@ -37,15 +41,9 @@ class ChallengeRulesScreen extends StatelessWidget {
               const SizedBox(height: 40),
               _buildStepCard(
                 number: 1,
-                title: 'Révision Flashcards',
-                description: 'On commence par s\'échauffer ! Révisez ensemble les cartes du thème pour vous préparer.',
-                color: emerald,
-              ),
-              const SizedBox(height: 16),
-              _buildStepCard(
-                number: 2,
-                title: 'Le Quiz Final',
-                description: 'C\'est le moment de vérité. Réponds le plus vite possible pour rafler la mise XP !',
+                title: 'Le Quiz',
+                description:
+                    '5 questions à choix multiples. Réponds vite et juste pour gagner la mise de $stake XP !',
                 color: rose,
               ),
               const Spacer(),
@@ -79,7 +77,7 @@ class ChallengeRulesScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Le défi contre $opponentName se déroule en deux temps forts :',
+          'Affronte $opponentName en répondant le plus vite possible.',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 16),
         ),
@@ -147,11 +145,13 @@ class ChallengeRulesScreen extends StatelessWidget {
         onPressed: () => Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => DuelFlashcardReviewScreen(
+            builder: (_) => DuelGameScreen(
               opponentName: opponentName,
               opponentAvatar: opponentAvatar,
               stake: stake,
               battleId: battleId,
+              battleContent: battleContent,
+              isLocalBattle: isLocalBattle,
             ),
           ),
         ),
