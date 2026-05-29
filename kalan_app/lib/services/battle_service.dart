@@ -4,12 +4,8 @@ import 'package:uuid/uuid.dart';
 import '../../domain/models/battle_model.dart';
 
 class BattleService {
-<<<<<<< HEAD
-  final SupabaseClient _client = Supabase.instance.client;
   static const _uuid = Uuid();
-=======
   SupabaseClient get _client => Supabase.instance.client;
->>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
 
   Future<Battle> createBattle({
     required String inviterId,

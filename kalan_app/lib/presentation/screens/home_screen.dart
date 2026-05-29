@@ -282,8 +282,9 @@ class HomeScreenState extends State<HomeScreen> {
       listener: (context, state) {
         if (state is UserLoaded) {
           final userId = state.profile['uuid'] as String? ?? 'guest';
+          final isGuest = state.profile['is_guest'] == true || state.profile['is_guest'] == 1;
           context.read<NotificationBloc>().add(LoadNotifications(userId));
-          if (userId != 'guest') {
+          if (!isGuest && userId != 'guest') {
             BattleInviteService.instance.start(userId);
           }
         }
@@ -471,21 +472,11 @@ class HomeScreenState extends State<HomeScreen> {
             ? 'Ce PDF semble être scanné ou composé d\'images. On ajoutera l\'OCR PDF dans l\'étape suivante.'
             : 'Aucun texte exploitable trouvé dans ce PDF.';
         ScaffoldMessenger.of(context).showSnackBar(
-<<<<<<< HEAD
-          const SnackBar(
-              content: Text(
-                  'Aucun texte trouvé dans ce PDF (PDF scanné non supporté)')),
-=======
           SnackBar(content: Text(detail), duration: const Duration(seconds: 5)),
->>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
         );
         return;
       }
 
-<<<<<<< HEAD
-      Navigator.push(context,
-          MaterialPageRoute(builder: (_) => GeneratingScreen(ocrText: text)));
-=======
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -497,7 +488,6 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
->>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
     } catch (e) {
       if (mounted) {
         if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
@@ -670,11 +660,7 @@ class HomeScreenState extends State<HomeScreen> {
               duration: const Duration(milliseconds: 200),
               width: isSelected ? 5 : 0,
               height: isSelected ? 5 : 0,
-<<<<<<< HEAD
               decoration: const BoxDecoration(
-=======
-              decoration: BoxDecoration(
->>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
                   color: AppColors.primary, shape: BoxShape.circle),
             ),
           ],
