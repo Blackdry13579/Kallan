@@ -1,4 +1,4 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
+﻿import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +8,7 @@ import 'package:kalan_app/data/models/user_model.dart';
 import 'package:kalan_app/data/remote/supabase_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/presence_service.dart';
 import '../widgets/kalan_button.dart';
 import 'home_screen.dart';
 
@@ -60,7 +61,7 @@ class _OnboardingPseudoScreenState extends State<OnboardingPseudoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -348,8 +349,15 @@ class _OnboardingPseudoScreenState extends State<OnboardingPseudoScreen> {
         }
       } catch (_) {}
 
-      // Créer le compte Supabase Auth
-      final response = await SupabaseService.signUp(email: email, password: password);
+      // Créer le compte Supabase Auth avec metadata (récupéré par le trigger)
+      final response = await SupabaseService.signUp(
+        email: email,
+        password: password,
+        data: {
+          'pseudo': pseudo,
+          'avatar_id': _selectedAvatar ?? 1,
+        },
+      );
       final supabaseUser = response.user;
       if (supabaseUser == null) throw Exception('Création du compte échouée');
 
@@ -370,12 +378,19 @@ class _OnboardingPseudoScreenState extends State<OnboardingPseudoScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('current_user_uuid', uuid);
 
-      // Sauvegarder profil dans Supabase
+      // Sauvegarder profil dans Supabase avec last_active immédiat
       try {
-        await SupabaseService.client.from('users').upsert(userModel.toSupabaseJson());
+        final payload = {
+          ...userModel.toSupabaseJson(),
+          'last_active': DateTime.now().toIso8601String(),
+        };
+        await SupabaseService.client.from('users').upsert(payload);
       } catch (e) {
         debugPrint('Erreur upsert users: $e');
       }
+
+      // Démarrer la présence immédiatement (pas attendre HomeScreen)
+      PresenceService.startHeartbeat();
 
       if (mounted) {
         Navigator.pushAndRemoveUntil(
@@ -440,3 +455,4 @@ class _OnboardingPseudoScreenState extends State<OnboardingPseudoScreen> {
     }
   }
 }
+

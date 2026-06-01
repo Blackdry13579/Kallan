@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/remote/supabase_service.dart';
 import '../widgets/kalan_button.dart';
@@ -65,7 +65,7 @@ class _OnboardingInfoScreenState extends State<OnboardingInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -284,3 +284,4 @@ class _OnboardingInfoScreenState extends State<OnboardingInfoScreen> {
     );
   }
 }
+

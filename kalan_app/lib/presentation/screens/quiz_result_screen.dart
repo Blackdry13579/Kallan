@@ -178,7 +178,7 @@ class _QuizResultScreenState extends State<QuizResultScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F2EA),
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           // Subtle background decorations

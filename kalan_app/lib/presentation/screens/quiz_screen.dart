@@ -173,7 +173,7 @@ class _QuizScreenState extends State<QuizScreen> {
           }
         },
         child: Scaffold(
-          backgroundColor: const Color(0xFFF5F2EA),
+          backgroundColor: Colors.transparent,
           body: SafeArea(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator())

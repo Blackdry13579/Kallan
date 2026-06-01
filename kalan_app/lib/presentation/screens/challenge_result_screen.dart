@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/battle_service.dart';
 
@@ -46,14 +46,14 @@ class _ChallengeResultScreenState extends State<ChallengeResultScreen> {
     const Color rose = Color(0xFFF43F5E);
     const Color clay = Color(0xFF8B4513);
     const Color gold = Color(0xFFF59E0B);
-    const Color background = Color(0xFFF8FAFC);
+    const Color background = Colors.transparent;
 
     final Color resultColor = win ? emerald : (tie ? clay : rose);
     final String resultTitle = win ? "Victoire !" : (tie ? "Égalité" : "Défaite");
     final IconData resultIcon = win ? Icons.emoji_events_rounded : (tie ? Icons.flare_rounded : Icons.priority_high_rounded);
 
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -169,3 +169,5 @@ class _ChallengeResultScreenState extends State<ChallengeResultScreen> {
     );
   }
 }
+
+

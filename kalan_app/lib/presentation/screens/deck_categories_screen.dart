@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/local/database_helper.dart';
@@ -62,7 +62,7 @@ class _DeckCategoriesScreenState extends State<DeckCategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('Matières'), centerTitle: true),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
@@ -133,3 +133,4 @@ class _DeckCategoriesScreenState extends State<DeckCategoriesScreen> {
     );
   }
 }
+

@@ -135,11 +135,11 @@ class UserModel {
   Map<String, dynamic> toSupabaseJson() => {
         'uuid': uuid,
         'pseudo': pseudo,
-        'email': email,
         'language': language,
         'points': points,
         'level': level,
         'streak': streak,
+        'is_guest': isGuest,
         'avatar_id': avatarId,
         'avatar_url': avatarId != null ? 'assets/avatars/avatar$avatarId.png' : null,
         'last_active': lastActive?.toIso8601String(),

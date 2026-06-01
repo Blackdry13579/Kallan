@@ -25,6 +25,7 @@ class _ManualFlashcardCreateScreenState extends State<ManualFlashcardCreateScree
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('Créer tes fiches')),
       body: Row(
         children: [

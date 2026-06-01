@@ -69,7 +69,7 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
             GoogleFonts.plusJakartaSansTextTheme(Theme.of(context).textTheme),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFFBF9F4),
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           child: Column(
             children: [
@@ -152,7 +152,7 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withValues(alpha: 0.10),
+                color: const Color(0xFF2D6A2D).withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Row(
@@ -258,18 +258,18 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF1565C0) : Colors.white,
+                  color: isSelected ? const Color(0xFF2D6A2D) : Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: isSelected
-                        ? const Color(0xFF1565C0)
+                        ? const Color(0xFF2D6A2D)
                         : const Color(0xFFE5E1DA),
                     width: isSelected ? 1.5 : 1,
                   ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                              color: const Color(0xFF1565C0)
+                              color: const Color(0xFF2D6A2D)
                                   .withValues(alpha: 0.20),
                               blurRadius: 8,
                               offset: const Offset(0, 2))
@@ -343,7 +343,7 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: _focusNode.hasFocus
-                  ? const Color(0xFF1565C0)
+                  ? const Color(0xFF2D6A2D)
                   : const Color(0xFFE5E1DA),
               width: _focusNode.hasFocus ? 1.5 : 1,
             ),
@@ -370,24 +370,6 @@ class _OfflineContextScreenState extends State<OfflineContextScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        if (widget.documentContext != null &&
-            widget.documentContext!.trim().isNotEmpty) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE3F2FD),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFBBDEFB)),
-            ),
-            child: Text(
-              widget.documentContext!,
-              style: const TextStyle(
-                  fontSize: 11, color: Color(0xFF185FA5), height: 1.45),
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
         // Preview du texte scanné
         Container(
           padding: const EdgeInsets.all(12),

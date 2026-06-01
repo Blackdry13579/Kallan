@@ -66,7 +66,7 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
         textTheme: GoogleFonts.fredokaTextTheme(Theme.of(context).textTheme),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF2EAD3),
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,

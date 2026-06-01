@@ -81,7 +81,7 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
         textTheme: GoogleFonts.fredokaTextTheme(Theme.of(context).textTheme),
       ),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,

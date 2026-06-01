@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:async';
@@ -128,7 +128,7 @@ class _ShareScreenState extends State<ShareScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Partage de Flashcards'),
         backgroundColor: Colors.white,
@@ -280,3 +280,4 @@ class _ShareScreenState extends State<ShareScreen> {
     );
   }
 }
+

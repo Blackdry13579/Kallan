@@ -62,8 +62,8 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
     await _loadSubjects();
     _isOffline = !await ConnectivityService().isOnline();
 
-    // Si hors ligne et qu'on n'a pas encore collecté le contexte → page contexte
-    if (_isOffline && widget.userContext == null) {
+    // Toujours passer par la page contexte si aucun contexte fourni (online ou offline)
+    if (widget.userContext == null) {
       if (!mounted) return;
       final detected = _detectSubject(widget.ocrText);
       Navigator.pushReplacement(
@@ -72,6 +72,7 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
           builder: (_) => OfflineContextScreen(
             ocrText: widget.ocrText,
             detectedSubject: detected,
+            showOfflineBadge: _isOffline,
           ),
         ),
       );
@@ -378,7 +379,7 @@ class _GeneratingScreenState extends State<GeneratingScreen> with TickerProvider
 
   Widget _buildLoadingUI() {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFCF8),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Stack(
           children: [

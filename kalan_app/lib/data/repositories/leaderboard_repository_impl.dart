@@ -20,22 +20,18 @@ class LeaderboardRepositoryImpl implements LeaderboardRepository {
 
     if (await _connectivity.isOnline()) {
       try {
-        // 1. Optimal : RPC get_leaderboard (1 requête, pseudo/avatar inclus)
-        var entries = await _fetchViaRpc(scope);
+        // Vider le cache avant fetch pour éviter d'afficher des users supprimés
+        await db.delete('leaderboard_entries', where: 'scope = ?', whereArgs: [scope]);
+
+        // 1. Source principale : table users triée par points (toujours à jour)
+        var entries = await _fetchFromUsersTable(scope);
         if (entries.isNotEmpty) {
           await _cacheEntries(db, scope, entries);
           return entries;
         }
 
-        // 2. Fallback : lecture directe de la table
-        entries = await _fetchViaTable(scope);
-        if (entries.isNotEmpty) {
-          await _cacheEntries(db, scope, entries);
-          return entries;
-        }
-
-        // 3. Dernier recours : construire depuis users.points
-        entries = await _fetchFromUsersTable(scope);
+        // 2. Fallback : RPC get_leaderboard si elle existe
+        entries = await _fetchViaRpc(scope);
         if (entries.isNotEmpty) {
           await _cacheEntries(db, scope, entries);
           return entries;
@@ -103,7 +99,7 @@ class LeaderboardRepositoryImpl implements LeaderboardRepository {
   Future<List<LeaderboardEntry>> _fetchFromUsersTable(String scope) async {
     final response = await SupabaseService.client
         .from('users')
-        .select('uuid, pseudo, avatar_id, points')
+        .select('uuid, pseudo, avatar_id, avatar_url, points')
         .order('points', ascending: false)
         .limit(100);
 
@@ -113,7 +109,10 @@ class LeaderboardRepositoryImpl implements LeaderboardRepository {
 
     for (final item in rows) {
       final pts = (item['points'] as num?)?.toInt() ?? 0;
-      if (pts <= 0) continue;
+      // avatar_url en priorité, sinon avatar_id (numéro d'avatar local)
+      final avatar = (item['avatar_url'] as String?)?.isNotEmpty == true
+          ? item['avatar_url'] as String
+          : item['avatar_id']?.toString();
       entries.add(LeaderboardEntry(
         userId: item['uuid'].toString(),
         pseudo: item['pseudo'] as String? ?? 'Anonyme',
@@ -121,7 +120,7 @@ class LeaderboardRepositoryImpl implements LeaderboardRepository {
         position: index++,
         scope: scope,
         lastUpdated: DateTime.now(),
-        avatar: item['avatar_id']?.toString(),
+        avatar: avatar,
       ));
     }
     return entries;

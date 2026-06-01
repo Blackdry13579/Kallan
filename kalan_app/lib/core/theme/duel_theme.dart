@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 class DuelTheme {
   DuelTheme._();
 
-  static const Color bg = Color(0xFFF5F2EA);
+  static const Color bg = Colors.transparent;
   static const Color card = Colors.white;
   static const Color text = Color(0xFF1C1C1C);
   static const Color sub = Color(0xFF9CA3AF);

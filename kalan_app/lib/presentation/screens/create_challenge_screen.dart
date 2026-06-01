@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -42,7 +42,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
 
   final Color _primaryColor = const Color(0xFF2D6A2D);
   final Color _gold = const Color(0xFFF59E0B);
-  final Color _bgColor = const Color(0xFFF5F2EA);
+  final Color _bgColor = Colors.transparent;
 
   @override
   void initState() {
@@ -116,7 +116,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
         final filteredResults = _searchResults.where((u) => u['uuid'] != currentUserId).toList();
 
         return Scaffold(
-          backgroundColor: _bgColor,
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             title: Text('NOUVEAU DÉFI', style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black)),
             backgroundColor: Colors.transparent,
@@ -142,25 +142,27 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
                 
                 const SizedBox(height: 32),
 
-                _buildHeader(Icons.auto_stories_rounded, 'MODE DE DÉFI', Colors.blue),
+                _buildHeader(Icons.auto_stories_rounded, 'MODE DE DÉFI', _primaryColor),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: _buildModeBlock(
-                        _selectedTheme ?? 'THÈME', 
-                        Icons.grid_view_rounded, 
-                        Colors.blue, 
-                        () => setState(() => _showThemes = !_showThemes)
+                        _selectedTheme ?? 'THÈME',
+                        Icons.grid_view_rounded,
+                        _primaryColor,
+                        () => setState(() => _showThemes = !_showThemes),
+                        selected: _selectedTheme != null && _selectedTheme != 'Mélange IA',
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildModeBlock(
-                        'MAÎTRE KALAN', 
-                        Icons.psychology_rounded, 
-                        const Color(0xFF6366F1), 
-                        _challengeAI
+                        'MAÎTRE KALAN',
+                        Icons.psychology_rounded,
+                        _gold,
+                        _challengeAI,
+                        selected: _selectedTheme == 'Mélange IA',
                       ),
                     ),
                   ],
@@ -171,7 +173,7 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
                 const SizedBox(height: 32),
 
                 if (_selectedUser == null) ...[
-                  _buildHeader(Icons.person_search_rounded, 'CHERCHER UN ADVERSAIRE', Colors.purple),
+                  _buildHeader(Icons.person_search_rounded, 'CHERCHER UN ADVERSAIRE', _primaryColor),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _opponentController,
@@ -257,24 +259,48 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
     );
   }
 
-  Widget _buildModeBlock(String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildModeBlock(String title, IconData icon, Color color, VoidCallback onTap, {bool selected = false}) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: selected
+              ? const Color(0xFF4CAF50).withValues(alpha: 0.10)
+              : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: color.withValues(alpha: 0.1), width: 2),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+          border: selected
+              ? Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.35), width: 1.5)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: const Color(0xFF2D6A2D), size: 28),
+            ),
+            const SizedBox(height: 10),
             Text(
               title.toUpperCase(),
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 11, color: color, letterSpacing: 1),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+                color: const Color(0xFF2D6A2D),
+                letterSpacing: 1,
+              ),
             ),
           ],
         ),
@@ -498,3 +524,4 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
     }
   }
 }
+

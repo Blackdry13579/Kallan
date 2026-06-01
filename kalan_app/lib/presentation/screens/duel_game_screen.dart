@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -52,7 +52,6 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
   final Color _primaryColor = const Color(0xFF6366F1);
   final Color _correctColor = const Color(0xFF10B981);
   final Color _wrongColor = const Color(0xFFF43F5E);
-  final Color _bgColor = const Color(0xFFF8FAFC);
 
   @override
   void initState() {
@@ -213,20 +212,20 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: _bgColor,
+        backgroundColor: Colors.transparent,
         body: const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))),
       );
     }
 
     if (_deck.isEmpty) {
       return Scaffold(
-        backgroundColor: _bgColor,
+        backgroundColor: Colors.transparent,
         body: const Center(child: Text('Aucun quiz disponible')),
       );
     }
 
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
@@ -296,7 +295,7 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: _bgColor, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
             child: ClipOval(
               child: (avatarPath != null && avatarPath.isNotEmpty && avatarPath.startsWith('assets'))
                   ? Image.asset(avatarPath, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildInitial(label[0], color))
@@ -452,3 +451,7 @@ class _DuelGameScreenState extends State<DuelGameScreen> {
     );
   }
 }
+
+
+
+

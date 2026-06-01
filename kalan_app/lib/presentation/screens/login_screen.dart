@@ -1,9 +1,6 @@
-<<<<<<< HEAD
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-=======
->>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -40,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -183,7 +180,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-<<<<<<< HEAD
       // Sur le web : connexion via Supabase (SQLite web est optionnel)
       if (kIsWeb) {
         await _loginViaSupabase(pseudo);
@@ -196,15 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
         await _loginWithMap(userMap);
         return;
       }
-=======
-      // 1. Connexion Supabase Auth
-      final response = await SupabaseService.signInWithPassword(
-        email: email,
-        password: password,
-      );
-      final supabaseUser = response.user;
-      if (supabaseUser == null) throw Exception('Connexion échouée');
->>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
 
       final uuid = supabaseUser.id;
 
@@ -212,26 +199,50 @@ class _LoginScreenState extends State<LoginScreen> {
       final db = await DatabaseHelper.instance.database;
       final localRows = await db.query('users', where: 'uuid = ?', whereArgs: [uuid]);
 
-      if (localRows.isEmpty) {
-        // Récupérer le profil depuis Supabase
-        try {
-          final remoteData = await SupabaseService.client
-              .from('users')
-              .select()
-              .eq('uuid', uuid)
-              .maybeSingle();
-          if (remoteData != null) {
-            final userModel = UserModel.fromMap({
-              ...remoteData,
-              'is_guest': 0,
-              'created_at': remoteData['created_at'] ?? DateTime.now().toIso8601String(),
-            });
-            await db.insert('users', userModel.toMap(),
-                conflictAlgorithm: ConflictAlgorithm.replace);
-          }
-        } catch (e) {
-          debugPrint('Erreur récupération profil Supabase: $e');
+      // Récupérer ou créer le profil Supabase
+      try {
+        final remoteData = await SupabaseService.client
+            .from('users')
+            .select()
+            .eq('uuid', uuid)
+            .maybeSingle();
+
+        if (remoteData != null) {
+          // Profil trouvé → sync local
+          final userModel = UserModel.fromMap({
+            ...remoteData,
+            'is_guest': 0,
+            'created_at': remoteData['created_at'] ?? DateTime.now().toIso8601String(),
+          });
+          await db.insert('users', userModel.toMap(),
+              conflictAlgorithm: ConflictAlgorithm.replace);
+        } else {
+          // Profil absent dans Supabase → le créer maintenant
+          final authUser = SupabaseService.currentUser;
+          final pseudo = authUser?.userMetadata?['pseudo'] as String?
+              ?? authUser?.email?.split('@').first
+              ?? 'Joueur';
+          final avatarId = authUser?.userMetadata?['avatar_id'] ?? 1;
+          final payload = {
+            'uuid': uuid,
+            'pseudo': pseudo,
+            'email': authUser?.email ?? '',
+            'avatar_id': avatarId,
+            'points': 0,
+            'level': 1,
+            'streak': 0,
+            'created_at': DateTime.now().toIso8601String(),
+            'last_active': DateTime.now().toIso8601String(),
+          };
+          await SupabaseService.client.from('users').upsert(payload);
+          await db.insert('users', {
+            ...payload,
+            'is_guest': 0,
+            'avatar_id': avatarId.toString(),
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
         }
+      } catch (e) {
+        debugPrint('Erreur récupération/création profil Supabase: $e');
       }
 
       // 3. Sauvegarder l'UUID en local
@@ -273,7 +284,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-<<<<<<< HEAD
 
   /// Connexion navigateur (Chrome) — pseudo trouvé sur Supabase.
   Future<void> _loginViaSupabase(String pseudo) async {
@@ -347,6 +357,5 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     _pinFocusNodes[0].requestFocus();
   }
-=======
->>>>>>> fb001a99013dd72570652afc58ecc80e19b64612
 }
+

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/utils/level_utils.dart';
 import '../widgets/tree_evolution.dart';
@@ -39,9 +39,9 @@ class _BadgesScreenState extends State<BadgesScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F2EA), // Fond beige crème conforme au HTML
+      backgroundColor: Colors.transparent, // Fond beige crème conforme au HTML
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F2EA),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
@@ -227,7 +227,7 @@ class _BadgesScreenState extends State<BadgesScreen> with SingleTickerProviderSt
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: const Color(0xFFECE7DB),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
@@ -243,18 +243,21 @@ class _BadgesScreenState extends State<BadgesScreen> with SingleTickerProviderSt
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: isActive ? const Color(0xFF2D6A2D) : Colors.transparent,
+                    color: isActive
+                        ? const Color(0xFF4CAF50).withValues(alpha: 0.10)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     labels[index],
                     style: TextStyle(
-                      color: isActive ? Colors.white : const Color(0xFF666666),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      color: isActive ? const Color(0xFF2D6A2D) : Colors.grey.shade500,
+                      fontWeight: isActive ? FontWeight.w900 : FontWeight.w700,
+                      fontSize: 12,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
@@ -358,4 +361,5 @@ class _BadgesScreenState extends State<BadgesScreen> with SingleTickerProviderSt
     );
   }
 }
+
 

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
@@ -92,7 +92,7 @@ class _LibraryScreenState extends State<LibraryScreen>
         textTheme: GoogleFonts.plusJakartaSansTextTheme(Theme.of(context).textTheme),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F8F6),
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           child: Column(
             children: [
@@ -127,7 +127,7 @@ class _LibraryScreenState extends State<LibraryScreen>
           dividerColor: const Color(0xFFE5E1DA),
           dividerHeight: 1,
           indicator: const UnderlineTabIndicator(
-            borderSide: BorderSide(color: Color(0xFF1565C0), width: 2.5),
+            borderSide: BorderSide(color: Color(0xFF2D6A2D), width: 2.5),
             insets: EdgeInsets.symmetric(horizontal: 20),
           ),
           indicatorSize: TabBarIndicatorSize.tab,
@@ -275,7 +275,7 @@ class _LibraryScreenState extends State<LibraryScreen>
         ? (deck.lastQuizScore ?? (deck.masteredCount / deck.cardCount * 100).round())
         : 0;
     final isGrey = color.toARGB32() == 0xFF9E9E9E;
-    final cardColor = isGrey ? const Color(0xFF2196F3) : color;
+    final cardColor = isGrey ? const Color(0xFF2D6A2D) : color;
     final barColor = pct < 50 ? const Color(0xFFE07B39) : cardColor;
 
     return GestureDetector(
@@ -397,10 +397,10 @@ class _LibraryScreenState extends State<LibraryScreen>
               Container(
                 width: 80, height: 80,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1565C0).withValues(alpha: 0.08),
+                  color: const Color(0xFF2D6A2D).withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.public_rounded, size: 38, color: Color(0xFF1565C0)),
+                child: const Icon(Icons.public_rounded, size: 38, color: Color(0xFF2D6A2D)),
               ),
               const SizedBox(height: 20),
               const Text('Bientôt disponible', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A))),
@@ -416,7 +416,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text('Actualiser', style: TextStyle(fontWeight: FontWeight.w800)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0),
+                  backgroundColor: const Color(0xFF2D6A2D),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
@@ -461,10 +461,10 @@ class _LibraryScreenState extends State<LibraryScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFF1565C0).withValues(alpha: 0.10),
+              color: const Color(0xFF2D6A2D).withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(subject, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF1565C0))),
+            child: Text(subject, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF2D6A2D))),
           ),
           const SizedBox(height: 8),
           Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
@@ -526,3 +526,4 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 }
+

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'duel_game_screen.dart';
 
@@ -25,10 +25,10 @@ class ChallengeRulesScreen extends StatelessWidget {
     const Color gold = Color(0xFFF59E0B);
     const Color rose = Color(0xFFF43F5E);
     const Color emerald = Color(0xFF10B981);
-    const Color background = Color(0xFFF8FAFC);
+    const Color background = Colors.transparent;
 
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -176,3 +176,5 @@ class ChallengeRulesScreen extends StatelessWidget {
     );
   }
 }
+
+

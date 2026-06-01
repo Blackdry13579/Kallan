@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -16,7 +16,8 @@ import '../blocs/notification/notification_bloc.dart';
 import '../blocs/notification/notification_state.dart';
 
 class HomeDashboard extends StatelessWidget {
-  const HomeDashboard({super.key});
+  final VoidCallback? onCreateTap;
+  const HomeDashboard({super.key, this.onCreateTap});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +26,7 @@ class HomeDashboard extends StatelessWidget {
         textTheme: GoogleFonts.plusJakartaSansTextTheme(Theme.of(context).textTheme),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F2EA),
+        backgroundColor: Colors.transparent,
         body: BlocBuilder<UserBloc, UserState>(
           builder: (context, state) {
             if (state is UserLoading) return const Center(child: CircularProgressIndicator());
@@ -131,7 +132,7 @@ class HomeDashboard extends StatelessWidget {
                   ? notifState.notifications.where((n) => n['is_read'] == 0).length
                   : 0;
               return GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen())),
+                onTap: () => _push(context, const NotificationScreen()),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -176,7 +177,7 @@ class HomeDashboard extends StatelessWidget {
         : 1.0;
 
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RoadmapScreen())),
+      onTap: () => _push(context, const RoadmapScreen()),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: SizedBox(
@@ -184,57 +185,87 @@ class HomeDashboard extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // Fond de bannière aligné en bas — 110px comme dans profil
+              // Fond de bannière en bois
               Positioned(
                 bottom: 0, left: 0, right: 0,
-                child: Container(
-                  height: 110,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: levelColors,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [BoxShadow(color: levelColors.first.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 5))],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 110, 0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'STATUT ACTUEL',
-                          style: TextStyle(color: Colors.white70, fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.2),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          levelInfo.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text('Niveau ${levelInfo.level}', style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700)),
-                            const Spacer(),
-                            Text('${(progress * 100).toInt()}%', style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: Colors.white.withValues(alpha: 0.25),
-                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF76D572)),
-                            minHeight: 5,
+                child: SizedBox(
+                  height: 112,
+                  child: Stack(
+                    children: [
+                      // Image de fond en bois
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            'assets/icons/baniere_dashboard.png',
+                            fit: BoxFit.fill,
+                            errorBuilder: (_, __, ___) => Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD4A96A),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      // Contenu texte par-dessus l'image
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(32, 0, 110, 0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'STATUT ACTUEL',
+                              style: TextStyle(color: Color(0xFF5A7A3A), fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              levelInfo.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Color(0xFF3B2E1A), fontSize: 20, fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE8F5E9),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFF5A7A3A), width: 1),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text('🌱', style: TextStyle(fontSize: 9)),
+                                      const SizedBox(width: 3),
+                                      Text('Niveau ${levelInfo.level}', style: const TextStyle(color: Color(0xFF3B5E20), fontSize: 9, fontWeight: FontWeight.w700)),
+                                    ],
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text('${(progress * 100).toInt()}%', style: const TextStyle(color: Color(0xFF6B4E2A), fontSize: 9, fontWeight: FontWeight.w700)),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 24),
+                              child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: const Color(0xFFBFA07A),
+                                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF5A7A3A)),
+                                minHeight: 5,
+                              ),
+                            ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -267,38 +298,47 @@ class HomeDashboard extends StatelessWidget {
     };
   }
 
+  void _push(BuildContext context, Widget screen) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: true,
+        barrierColor: Colors.transparent,
+        pageBuilder: (_, __, ___) => screen,
+        transitionsBuilder: (_, animation, __, child) => SlideTransition(
+          position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+              .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 280),
+      ),
+    );
+  }
+
   // ── GRILLE D'ACTIONS ────────────────────────────────────────────────────────
   Widget _buildActionGrid(BuildContext context) {
+    final blocks = [
+      ('assets/icons/flashcard_block.png', onCreateTap ?? () => _push(context, const CreateDeckScreen())),
+      ('assets/icons/parcour_block.png',   () => _push(context, const RoadmapScreen())),
+      ('assets/icons/badges_block.png',    () => _push(context, const BadgesScreen())),
+    ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Expanded(
-            child: _ActionCard(
-              title: 'Flashcard',
-              iconAsset: 'b.png',
-              gradientColors: const [Color(0xFF1565C0), Color(0xFF1E88E5)],
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateDeckScreen())),
+          for (int i = 0; i < blocks.length; i++) ...[
+            if (i > 0) const SizedBox(width: 10),
+            Expanded(
+              child: GestureDetector(
+                onTap: blocks[i].$2,
+                child: Image.asset(
+                  blocks[i].$1,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _ActionCard(
-              title: 'Parcours',
-              iconAsset: 'parchemin.png',
-              gradientColors: const [Color(0xFF2E7D32), Color(0xFF43A047)],
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RoadmapScreen())),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _ActionCard(
-              title: 'Badges',
-              iconAsset: 'badge3d.png',
-              gradientColors: const [Color(0xFFB45309), Color(0xFFD97706)],
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BadgesScreen())),
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -309,7 +349,7 @@ class HomeDashboard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BattleLobbyScreen())),
+        onTap: () => _push(context, const BattleLobbyScreen()),
         child: Container(
           height: 110,
           padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -416,12 +456,7 @@ class HomeDashboard extends StatelessWidget {
                   final color = _subjectColor(subject);
 
                   return ListTile(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => FlashcardStudyScreen(deckTitle: deck['title'], deckUuid: deck['uuid']),
-                      ),
-                    ),
+                    onTap: () => _push(context, FlashcardStudyScreen(deckTitle: deck['title'], deckUuid: deck['uuid'])),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     leading: Container(
                       width: 38, height: 38,
@@ -478,95 +513,4 @@ class HomeDashboard extends StatelessWidget {
   }
 }
 
-// ── WIDGET ACTION CARD ────────────────────────────────────────────────────────
-class _ActionCard extends StatelessWidget {
-  final String title;
-  final String iconAsset;
-  final List<Color> gradientColors;
-  final VoidCallback onTap;
 
-  const _ActionCard({
-    required this.title,
-    required this.iconAsset,
-    required this.gradientColors,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 120,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: gradientColors,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: gradientColors.first.withValues(alpha: 0.38),
-              blurRadius: 12,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Filigrane — cercles décoratifs superposés
-            Positioned(top: -22, right: -22,
-              child: Container(width: 90, height: 90,
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), shape: BoxShape.circle))),
-            Positioned(bottom: -18, left: -18,
-              child: Container(width: 68, height: 68,
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), shape: BoxShape.circle))),
-            Positioned(top: 8, right: 28,
-              child: Container(width: 36, height: 36,
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), shape: BoxShape.circle))),
-            Positioned(bottom: 18, right: -10,
-              child: Container(width: 48, height: 48,
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), shape: BoxShape.circle))),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Icône
-                  Image.asset(
-                    'assets/icons/bottom/$iconAsset',
-                    height: 70,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.star_rounded, color: Colors.white, size: 52),
-                  ),
-                  // Titre dans un pill
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.20),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
-                    ),
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        height: 1.2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

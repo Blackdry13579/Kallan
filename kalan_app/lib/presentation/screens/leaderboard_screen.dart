@@ -3,11 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/leaderboard/leaderboard_bloc.dart';
 import '../blocs/leaderboard/leaderboard_event.dart';
 import '../blocs/leaderboard/leaderboard_state.dart';
+import '../blocs/user/user_bloc.dart';
+import '../blocs/user/user_state.dart';
 import '../../core/utils/level_utils.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../services/connectivity_service.dart';
-import 'roadmap_screen.dart';
-
+import '../../domain/entities/leaderboard_entry.dart';
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
 
@@ -19,6 +20,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   String _currentScope = 'national';
   bool _isOnline = true;
   bool _checkingConnection = false;
+  int _nationalRank = -1;
+  int _myPoints = 0;
+  int _myLevel = 0; // 0 = pas encore chargé depuis Supabase
+  String? _myAvatar;
 
   ImageProvider _getAvatarImage(String? avatar) {
     if (avatar == null || avatar.isEmpty) {
@@ -37,7 +42,49 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkConnectionAndRefresh());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkConnectionAndRefresh();
+      _fetchNationalRank();
+    });
+  }
+
+  Future<void> _fetchNationalRank() async {
+    try {
+      // Attendre que la session soit restaurée (nouveau téléphone / cold start)
+      String? uid = SupabaseService.currentUser?.id;
+      if (uid == null) {
+        await Future.delayed(const Duration(seconds: 2));
+        uid = SupabaseService.currentUser?.id;
+      }
+      if (uid == null) return;
+
+      final userRes = await SupabaseService.client
+          .from('users')
+          .select('points, avatar_id, level')
+          .eq('uuid', uid)
+          .maybeSingle();
+
+      final myPoints = (userRes?['points'] as num?)?.toInt() ?? 0;
+      final myLevel  = (userRes?['level']  as num?)?.toInt() ?? 1;
+      final myAvatar = userRes?['avatar_id']?.toString();
+      // Nombre d'utilisateurs avec PLUS de points = rang - 1
+      final above = await SupabaseService.client
+          .from('users')
+          .select('uuid')
+          .gt('points', myPoints);
+
+      final rank = (above as List).length + 1;
+      if (mounted) {
+        setState(() {
+          _nationalRank = rank;
+          _myPoints = myPoints;
+          _myLevel  = myLevel;
+          _myAvatar = myAvatar;
+        });
+      }
+    } catch (e) {
+      debugPrint('[LeaderboardScreen] _fetchNationalRank error: $e');
+    }
   }
 
   // La connexion est gérée par le Bloc et le Repository, 
@@ -58,19 +105,12 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F4EC),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Classement', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF2D5C14))),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RoadmapScreen())),
-            icon: const Icon(Icons.map_rounded, color: Color(0xFF2D5C14)),
-            tooltip: 'Mon Parcours',
-          ),
-        ],
       ),
       body: _checkingConnection
           ? const Center(child: CircularProgressIndicator())
@@ -100,7 +140,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                             children: [
                               _buildTabs(),
                               _buildTopThree(topThree),
-                              const SizedBox(height: 14),
+                              _buildMyRankBanner(state),
+                              const SizedBox(height: 8),
                               _buildCompactList(remaining),
                               const SizedBox(height: 100),
                             ],
@@ -246,8 +287,19 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Widget _buildTabs() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+      height: 48,
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           _tabItem('Semaine', 'weekly'),
@@ -266,13 +318,24 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           setState(() => _currentScope = scope);
           context.read<LeaderboardBloc>().add(LoadLeaderboard(scope: scope));
         },
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(color: active ? const Color(0xFFD97706) : Colors.transparent, borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(
+            color: active
+                ? const Color(0xFF4CAF50).withValues(alpha: 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Center(
             child: Text(
               label,
-              style: TextStyle(color: active ? Colors.white : Colors.grey, fontWeight: FontWeight.w800, fontSize: 13),
+              style: TextStyle(
+                color: active ? const Color(0xFF2D6A2D) : Colors.grey.shade500,
+                fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+                fontSize: 12,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
         ),
@@ -364,13 +427,165 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
         ),
         Text('${entry.points} XP',
-          style: const TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.w700, fontSize: 10)),
+          style: const TextStyle(color: Color(0xFF7C5C32), fontWeight: FontWeight.w700, fontSize: 10)),
       ],
     );
   }
 
+  String _formatPoints(int points) {
+    if (points >= 1000) {
+      final k = points / 1000;
+      return '${k == k.roundToDouble() ? k.toInt() : k.toStringAsFixed(1)} k';
+    }
+    return '$points';
+  }
+
+  Widget _buildMyRankBanner(LeaderboardLoaded state) {
+    // UserBloc comme source principale pour l'uuid (toujours disponible)
+    final userBlocState = context.read<UserBloc>().state;
+    int blocPoints = 0;
+    String? blocAvatar;
+    String? blocUuid;
+    if (userBlocState is UserLoaded) {
+      blocPoints = userBlocState.profile['points'] as int? ?? 0;
+      blocAvatar = userBlocState.profile['avatar_id']?.toString();
+      blocUuid   = userBlocState.profile['uuid']?.toString();
+    }
+
+    // uid : Supabase Auth en priorité, fallback sur UserBloc
+    final currentUserId = SupabaseService.currentUser?.id ?? blocUuid;
+
+    int localRank = -1;
+    LeaderboardEntry? myEntry;
+    for (int i = 0; i < state.entries.length; i++) {
+      if (state.entries[i].userId == currentUserId) {
+        localRank = i + 1;
+        myEntry = state.entries[i];
+        break;
+      }
+    }
+
+    // Rang réel : _nationalRank (requête directe count) en priorité, puis localRank
+    final displayRank = _nationalRank > 0
+        ? _nationalRank
+        : (localRank > 0 ? localRank : (state.entries.isNotEmpty ? state.entries.length + 1 : 1));
+
+    // Points / avatar / niveau : Supabase direct → UserBloc → entry du classement
+    final userPoints = _myPoints > 0 ? _myPoints : (blocPoints > 0 ? blocPoints : (myEntry?.points ?? 0));
+    final userAvatar = _myAvatar ?? blocAvatar ?? myEntry?.avatar;
+    final userLevel  = _myLevel > 0 ? _myLevel : LevelUtils.getLevelInfo(userPoints).level;
+    final rankText   = '#$displayRank';
+
+    // Hauteur fixe compacte
+    const double H = 116.0;
+    const double avatarSize = 44.0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final W = constraints.maxWidth;
+
+          return SizedBox(
+            width: W,
+            height: H,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // ── Image de fond ────────────────────────────────────
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/icons/baniere_rang.png',
+                    fit: BoxFit.fill,
+                  ),
+                ),
+
+                // ── Avatar ───────────────────────────────────────────
+                Positioned(
+                  left: W * 0.095,
+                  top: (H - avatarSize) / 2,
+                  child: ClipOval(
+                    child: SizedBox(
+                      width: avatarSize,
+                      height: avatarSize,
+                      child: Image(
+                        image: _getAvatarImage(userAvatar),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // ── Niveau (sans étoile, petit) ──────────────────────
+                Positioned(
+                  left: W * 0.225,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: Text(
+                      'NIVEAU $userLevel',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                        shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // ── Rang national : en dessous de la coupe ────────────
+                Positioned(
+                  left: 3,
+                  right: 0,
+                  top: H * 0.51,
+                  child: Center(
+                    child: Text(
+                      rankText,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: W * 0.055,
+                        letterSpacing: -0.5,
+                        shadows: const [
+                          Shadow(color: Colors.black87, blurRadius: 8),
+                          Shadow(color: Colors.black54, blurRadius: 2, offset: Offset(0, 2)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // ── Points alignés horizontalement avec l'avatar ─────
+                Positioned(
+                  right: W * 0.052 + 57,
+                  top: 5,
+                  bottom: 0,
+                  child: Center(
+                    child: Text(
+                    _formatPoints(userPoints),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      shadows: [Shadow(color: Colors.black87, blurRadius: 5)],
+                    ),
+                  ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildCompactList(List<dynamic> remaining) {
-    final currentUserId = SupabaseService.currentUser?.id;
+    final userBlocState = context.read<UserBloc>().state;
+    String? blocUuid;
+    if (userBlocState is UserLoaded) blocUuid = userBlocState.profile['uuid']?.toString();
+    final currentUserId = SupabaseService.currentUser?.id ?? blocUuid;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -393,54 +608,51 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
             ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: remaining.length,
-              separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
-              itemBuilder: (context, index) {
-                final entry = remaining[index];
-                final rank = index + 4;
-                final isMe = entry.userId == currentUserId;
-
-                return Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
-                  color: isMe ? const Color(0xFFFEF3C7) : Colors.transparent,
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 30,
-                        child: Text('$rank', style: TextStyle(fontWeight: FontWeight.w800, color: isMe ? const Color(0xFFD97706) : Colors.grey, fontSize: 13)),
-                      ),
-                      Container(
-                        width: 30,
-                        height: 30,
-                        margin: const EdgeInsets.only(right: 12),
-                        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isMe ? const Color(0xFFD97706) : Colors.transparent, width: 1.5)),
-                        child: ClipOval(child: Image(image: _getAvatarImage(entry.avatar), fit: BoxFit.cover)),
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              entry.pseudo + (isMe ? ' (Toi)' : ''),
-                              style: TextStyle(fontWeight: FontWeight.w700, color: isMe ? const Color(0xFFD97706) : const Color(0xFF2A1A08), fontSize: 13),
-                            ),
-                            Text(
-                              'Niv. ${LevelUtils.getLevelInfo(entry.points).level}',
-                              style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text('${entry.points} XP', style: TextStyle(fontWeight: FontWeight.w800, color: isMe ? const Color(0xFFD97706) : const Color(0xFFB45309), fontSize: 12)),
-                    ],
-                  ),
-                );
-              },
+            child: Column(
+              children: [
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: remaining.length,
+                  separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
+                  itemBuilder: (context, index) {
+                    final entry = remaining[index];
+                    final rank = index + 4;
+                    final isMe = entry.userId == currentUserId;
+                    return _buildListRow(entry.pseudo, entry.avatar, rank, entry.points, isMe);
+                  },
+                ),
+              ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListRow(String pseudo, dynamic avatar, dynamic rank, int points, bool isMe) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+      color: isMe ? const Color(0xFFFEF3C7) : Colors.transparent,
+      child: Row(
+        children: [
+          SizedBox(width: 30, child: Text('$rank', style: TextStyle(fontWeight: FontWeight.w800, color: isMe ? const Color(0xFF7C5C32) : Colors.grey, fontSize: 13))),
+          Container(
+            width: 30, height: 30,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isMe ? const Color(0xFF7C5C32) : Colors.transparent, width: 1.5)),
+            child: ClipOval(child: Image(image: _getAvatarImage(avatar), fit: BoxFit.cover)),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(pseudo + (isMe ? ' (Toi)' : ''), style: TextStyle(fontWeight: FontWeight.w700, color: isMe ? const Color(0xFF7C5C32) : const Color(0xFF2A1A08), fontSize: 13)),
+                Text('Niv. ${LevelUtils.getLevelInfo(points).level}', style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          Text('$points XP', style: TextStyle(fontWeight: FontWeight.w800, color: isMe ? const Color(0xFF7C5C32) : const Color(0xFFB45309), fontSize: 12)),
         ],
       ),
     );

@@ -171,7 +171,7 @@ class _FlashcardStudyScreenState extends State<FlashcardStudyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F2EA),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: BlocConsumer<FlashcardBloc, FlashcardState>(
           listener: (context, state) {

@@ -32,7 +32,12 @@ class UserRepositoryImpl implements UserRepository {
     
     if (maps.isNotEmpty) {
       final userMap = Map<String, dynamic>.from(maps.first);
-      
+
+      // Si en ligne, s'assurer que le profil existe dans Supabase
+      if (await _connectivity.isOnline() && userMap['uuid'] != null) {
+        _ensureSupabaseProfile(userMap['uuid'] as String, userMap);
+      }
+
       // Update streak if needed
       final updatedUserMap = await _checkAndUpdateStreak(userMap);
       return updatedUserMap;
@@ -46,6 +51,30 @@ class UserRepositoryImpl implements UserRepository {
       'streak': 0,
       'class': 'Non définie',
     };
+  }
+
+  // Crée le profil dans Supabase s'il est absent (comptes anciens, changement de téléphone)
+  Future<void> _ensureSupabaseProfile(String uuid, Map<String, dynamic> localMap) async {
+    try {
+      final existing = await SupabaseService.client
+          .from('users')
+          .select('uuid')
+          .eq('uuid', uuid)
+          .maybeSingle();
+      if (existing == null) {
+        await SupabaseService.client.from('users').upsert({
+          'uuid':        uuid,
+          'pseudo':      localMap['pseudo'] ?? 'Joueur',
+          'email':       localMap['email'] ?? '',
+          'avatar_id':   localMap['avatar_id'] ?? 1,
+          'points':      localMap['points'] ?? 0,
+          'level':       localMap['level'] ?? 1,
+          'streak':      localMap['streak'] ?? 0,
+          'created_at':  localMap['created_at'] ?? DateTime.now().toIso8601String(),
+          'last_active': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (_) {}
   }
 
   Future<Map<String, dynamic>> _checkAndUpdateStreak(Map<String, dynamic> userMap) async {

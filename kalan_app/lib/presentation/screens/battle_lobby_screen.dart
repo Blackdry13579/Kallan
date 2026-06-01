@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,7 +24,7 @@ import 'waiting_room_screen.dart';
 // ── Palette ───────────────────────────────────────────────────────────────────
 const _kFire   = Color(0xFFEA580C);
 const _kFireLt = Color(0xFFFFF7ED);
-const _kBg     = Color(0xFFF5F2EA);
+const _kBg     = Colors.transparent;
 const _kCard   = Colors.white;
 const _kText   = Color(0xFF1C1C1C);
 const _kSub    = Color(0xFF9CA3AF);
@@ -56,6 +56,7 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
   String? _userId;
   int    _userXp     = 0;
   String _userPseudo = '';
+  dynamic _userAvatar;
 
   // tab Créer
   int    _stake          = 100;
@@ -70,6 +71,16 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
   Timer? _battlesPollTimer;
   List<Map<String, dynamic>> _battlesCache = [];
   final _searchCtrl = TextEditingController();
+
+  static ImageProvider _getAvatarImage(dynamic avatar) {
+    if (avatar == null) return const AssetImage('assets/avatars/avatar1.png');
+    final s = avatar.toString();
+    if (s.isEmpty) return const AssetImage('assets/avatars/avatar1.png');
+    final intValue = int.tryParse(s);
+    if (intValue != null) return AssetImage('assets/avatars/avatar$intValue.png');
+    if (s.startsWith('assets/')) return AssetImage(s);
+    return NetworkImage(s);
+  }
 
   static const _themes = [
     'Mathématiques', 'SVT', 'Physique-Chimie',
@@ -143,10 +154,11 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
             _refreshBattlesList();
           }
           _userId ??= profileUuid;
+          _userAvatar = state.profile['avatar_url'] ?? state.profile['avatar_id'];
         }
         _ensureBattlesPolling();
         return Scaffold(
-          backgroundColor: _kBg,
+          backgroundColor: Colors.transparent,
           body: SafeArea(
             child: Column(
               children: [
@@ -340,11 +352,11 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
                           margin: const EdgeInsets.symmetric(horizontal: 3),
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           decoration: BoxDecoration(
-                            color: sel ? (canAfford ? _kGold : Colors.red.shade400) : _kCard,
+                            color: sel ? (canAfford ? _kBrown : Colors.red.shade400) : _kCard,
                             borderRadius: BorderRadius.circular(14),
                             border: sel ? null : Border.all(color: Colors.black.withValues(alpha: 0.06)),
                             boxShadow: [BoxShadow(
-                              color: sel ? _kGold.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.04),
+                              color: sel ? _kBrown.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.04),
                               blurRadius: sel ? 10 : 6, offset: const Offset(0, 3),
                             )],
                           ),
@@ -507,10 +519,7 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
                         leading: Stack(children: [
                           CircleAvatar(
                             backgroundColor: _kFire.withValues(alpha: 0.1),
-                            child: Text(
-                              ((u['pseudo'] as String?) ?? '?').isNotEmpty
-                                  ? (u['pseudo'] as String)[0].toUpperCase() : '?',
-                              style: const TextStyle(fontWeight: FontWeight.w900, color: _kFire)),
+                            backgroundImage: _getAvatarImage(u['avatar_url'] ?? u['avatar_id']),
                           ),
                           Positioned(right: 0, bottom: 0,
                             child: Container(
@@ -572,6 +581,7 @@ class _BattleLobbyScreenState extends State<BattleLobbyScreen> {
                 isLoading:   _isLoading,
                 hasEnoughXp: _userXp >= _stake,
                 isLocalMode: !_deviceOnline,
+                myAvatar:    _userAvatar,
                 onClear: () => setState(() {
                   _selectedOpponent = null;
                   _mode = 'theme';
@@ -879,8 +889,15 @@ class _TabPills extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const labels = ['Arène', 'Créer', 'Historique'];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      height: 48,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
       child: Row(
         children: List.generate(3, (i) {
           final sel = selected == i;
@@ -889,21 +906,20 @@ class _TabPills extends StatelessWidget {
               onTap: () => onTap(i),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                margin: EdgeInsets.only(right: i < 2 ? 6 : 0),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: sel ? _kFire : _kCard,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [BoxShadow(
-                    color: sel ? _kFire.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.04),
-                    blurRadius: sel ? 10 : 6, offset: const Offset(0, 3),
-                  )],
+                  color: sel ? const Color(0xFF4CAF50).withValues(alpha: 0.10) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(labels[i],
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w800, fontSize: 13,
-                    color: sel ? Colors.white : _kSub)),
+                child: Center(
+                  child: Text(labels[i],
+                    style: TextStyle(
+                      color: sel ? const Color(0xFF2D6A2D) : Colors.grey.shade500,
+                      fontWeight: sel ? FontWeight.w900 : FontWeight.w700,
+                      fontSize: 12,
+                      letterSpacing: 0.5,
+                    )),
+                ),
               ),
             ),
           );
@@ -921,55 +937,12 @@ class _ArenaHero extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.fromLTRB(16, 20, 20, 20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF0F3460), Color(0xFF1A5C3A), _kBrown],
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(
-            color: const Color(0xFF0F3460).withValues(alpha: 0.35),
-            blurRadius: 20, offset: const Offset(0, 8),
-          )],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/icons/bottom/eper.png',
-              height: 86,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const SizedBox(width: 86),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Arène de Duels',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 20, color: Colors.white)),
-                  const SizedBox(height: 5),
-                  Text('Défie tes amis et gagne des XP !',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: 0.68))),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF16A34A), Color(0xFF15803D)]),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text('⚔️  NOUVEAU DÉFI',
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 12,
-                        color: Colors.white, letterSpacing: 0.4)),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      child: Center(
+        child: Image.asset(
+          'assets/icons/bottom/eper.png',
+          height: 120,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const Text('⚔️', style: TextStyle(fontSize: 80)),
         ),
       ),
     );
@@ -1117,13 +1090,14 @@ class _FriendRow extends StatelessWidget {
         Stack(children: [
           Container(
             width: 44, height: 44,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFFA5D6A7), Color(0xFF4CAF50)]),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFFA5D6A7), Color(0xFF4CAF50)]),
               shape: BoxShape.circle,
+              image: DecorationImage(
+                image: _BattleLobbyScreenState._getAvatarImage(user['avatar_url'] ?? user['avatar_id']),
+                fit: BoxFit.cover,
+              ),
             ),
-            child: Center(
-              child: Text(pseudo.isNotEmpty ? pseudo[0].toUpperCase() : '?',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white))),
           ),
           Positioned(bottom: 1, right: 1,
             child: Container(
@@ -1270,12 +1244,17 @@ class _RecapCard extends StatelessWidget {
     required this.stake, required this.canSend, required this.isLoading,
     required this.hasEnoughXp,
     this.isLocalMode = false,
+    required this.myAvatar,
     required this.onClear, required this.onSend,
   });
+
+  final dynamic myAvatar;
 
   @override
   Widget build(BuildContext context) {
     final oppName = opponent['pseudo'] as String? ?? 'Adversaire';
+    final oppAvatar = opponent['avatar_url'] ?? opponent['avatar_id'];
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1285,7 +1264,7 @@ class _RecapCard extends StatelessWidget {
       child: Column(children: [
         // VS row
         Row(children: [
-          _PlayerBadge(pseudo: myPseudo, label: 'Toi'),
+          _PlayerBadge(pseudo: myPseudo, label: 'Toi', avatar: myAvatar),
           const Spacer(),
           Container(
             width: 36, height: 36,
@@ -1299,6 +1278,7 @@ class _RecapCard extends StatelessWidget {
           const Spacer(),
           _PlayerBadge(
             pseudo: oppName, label: 'Adversaire',
+            avatar: oppAvatar,
             onClear: opponent['uuid'] != '00000000-0000-0000-0000-000000000000' ? onClear : null,
           ),
         ]),
@@ -1390,8 +1370,9 @@ class _JoinQrCard extends StatelessWidget {
 
 class _PlayerBadge extends StatelessWidget {
   final String pseudo, label;
+  final dynamic avatar;
   final VoidCallback? onClear;
-  const _PlayerBadge({required this.pseudo, required this.label, this.onClear});
+  const _PlayerBadge({required this.pseudo, required this.label, this.avatar, this.onClear});
 
   @override
   Widget build(BuildContext context) {
@@ -1400,12 +1381,14 @@ class _PlayerBadge extends StatelessWidget {
         Container(
           width: 54, height: 54,
           decoration: BoxDecoration(
-            color: const Color(0xFFEDE8DE), shape: BoxShape.circle,
+            color: const Color(0xFFEDE8DE),
+            shape: BoxShape.circle,
             border: Border.all(color: const Color(0xFFF0EBE0), width: 2),
+            image: DecorationImage(
+              image: _BattleLobbyScreenState._getAvatarImage(avatar),
+              fit: BoxFit.cover,
+            ),
           ),
-          child: Center(child: Text(
-            pseudo.isNotEmpty ? pseudo[0].toUpperCase() : '?',
-            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900))),
         ),
         if (onClear != null)
           Positioned(top: -2, right: -2,
@@ -1469,3 +1452,5 @@ class _EmptyHint extends StatelessWidget {
     );
   }
 }
+
+

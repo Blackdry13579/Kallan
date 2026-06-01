@@ -87,7 +87,7 @@ class _VersusScreenState extends State<VersusScreen> {
         
         if (state is UserLoaded) {
           return Scaffold(
-            backgroundColor: const Color(0xFFF5F2EA),
+            backgroundColor: Colors.transparent,
             appBar: AppBar(
               title: const Text('Mode Versus', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF2D6A2D))),
               backgroundColor: Colors.transparent,

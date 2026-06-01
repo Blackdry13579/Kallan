@@ -1,5 +1,6 @@
 import 'package:kalan_app/presentation/screens/splash_screen.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:kalan_app/presentation/widgets/kalan_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -159,14 +160,16 @@ class KalanApp extends StatelessWidget {
       themeMode: ThemeMode.light,
       home: const SplashScreen(),
       builder: (context, child) {
-        return NotificationSignalBanner(
-          child: CelebrationListener(
-            navigatorKey: appNavigatorKey,
-            child: MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.linear(TextScale.normal.factor),
+        return KalanBackground(
+          child: NotificationSignalBanner(
+            child: CelebrationListener(
+              navigatorKey: appNavigatorKey,
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(TextScale.normal.factor),
+                ),
+                child: child!,
               ),
-              child: child!,
             ),
           ),
         );

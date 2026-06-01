@@ -57,7 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       ),
       child: Scaffold(
         resizeToAvoidBottomInset: true, // Crucial pour le clavier
-        backgroundColor: const Color(0xFFF5F2EA),
+        backgroundColor: Colors.transparent,
         body: BlocBuilder<UserBloc, UserState>(
           builder: (context, state) {
             if (state is UserLoading) return const Center(child: CircularProgressIndicator());
@@ -233,10 +233,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       children: [
         Row(
           children: [
-            // Bloc Niveau : Uniquement l'icône, pas de texte "1"
-            Expanded(child: _buildStatBlock('NIVEAU', '', const Color(0xFF4CAF50), 'assets/icons/badges_niveau/level${levelInfo.level}.png', isLevel: true)),
+            Expanded(child: _buildStatBlock('NIVEAU', levelInfo.level.toString(), const Color(0xFF4CAF50), 'assets/icons/badges_niveau/level${levelInfo.level}.png')),
             const SizedBox(width: 15),
-            // Bloc XP : Texte en haut à droite
             Expanded(child: _buildStatBlock('XP TOTAL', points.toString(), const Color(0xFFE8C87A), 'assets/icons/xp_icon.png')),
           ],
         ),
@@ -251,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildStatBlock(String label, String value, Color color, String assetPath, {bool isLevel = false}) {
+  Widget _buildStatBlock(String label, String value, Color color, String assetPath) {
     return Container(
       height: 110,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -262,40 +260,45 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       ),
       child: Row(
         children: [
-          // Partie GAUCHE : L'icône qui remplit la zone (agrandie à 80)
           Expanded(
-            flex: 3, // Plus d'espace pour l'icône
+            flex: 3,
             child: Center(
               child: Image.asset(
-                assetPath, 
-                height: 80, 
-                width: 80, 
-                fit: BoxFit.contain, 
-                errorBuilder: (_, __, ___) => Icon(Icons.star_rounded, color: color, size: 50)
+                assetPath,
+                height: 80,
+                width: 80,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Icon(Icons.star_rounded, color: color, size: 50),
               ),
             ),
           ),
           const SizedBox(width: 4),
-          // Partie DROITE : Chiffre au centre et Label en bas
           Expanded(
             flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (!isLevel)
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        value, 
-                        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A))
-                      ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: color,
                     ),
-                  )
-                else
-                  const Spacer(),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Text(
-                  label, 
-                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.grey.shade400, letterSpacing: 0.5)
+                  label,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey.shade400,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ],
             ),
@@ -745,17 +748,17 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           ),
           child: Column(
             children: [
-              const _SettingItem(
-                icon: Icons.volume_up_outlined,
-                iconBg: Color(0xFFF0FDF4),
+                  const _SettingItem(
+                icon: Icons.volume_up_rounded,
+                iconColor: Color(0xFF00C853),
                 title: 'Son',
                 subtitle: 'Effets sonores de l\'application',
                 prefKey: 'sound_enabled',
                 defaultValue: true,
               ),
               _SettingItem(
-                icon: Icons.notifications_none_rounded,
-                iconBg: const Color(0xFFEEF2FF),
+                icon: Icons.notifications_rounded,
+                iconColor: const Color(0xFF7C4DFF),
                 title: 'Rappel Notification',
                 subtitle: 'Rappels de révisions quotidiens',
                 prefKey: 'notifications_enabled',
@@ -773,8 +776,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 },
               ),
               _SettingItem(
-                icon: Icons.access_time_rounded,
-                iconBg: const Color(0xFFFFF7ED),
+                icon: Icons.alarm_rounded,
+                iconColor: const Color(0xFFFF6F00),
                 title: 'Heure de révision',
                 subtitle: 'Rappel programmé à $_reminderTime',
                 prefKey: 'reminder_time_action',
@@ -783,8 +786,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 onTap: () => _selectReminderTime(context),
               ),
               _SettingItem(
-                icon: Icons.info_outline_rounded,
-                iconBg: const Color(0xFFF3F4F6),
+                icon: Icons.info_rounded,
+                iconColor: const Color(0xFF0288D1),
                 title: 'À propos',
                 subtitle: 'En savoir plus sur KALAN',
                 prefKey: 'about',
@@ -947,7 +950,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
 class _SettingItem extends StatefulWidget {
   final IconData icon;
-  final Color iconBg;
+  final Color iconColor;
   final String title;
   final String subtitle;
   final String prefKey;
@@ -958,7 +961,7 @@ class _SettingItem extends StatefulWidget {
 
   const _SettingItem({
     required this.icon,
-    required this.iconBg,
+    required this.iconColor,
     required this.title,
     required this.subtitle,
     this.prefKey = '',
@@ -1002,7 +1005,34 @@ class _SettingItemState extends State<_SettingItem> {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         child: Row(
           children: [
-            Container(width: 38, height: 38, decoration: BoxDecoration(color: widget.iconBg, shape: BoxShape.circle), child: Icon(widget.icon, size: 18, color: const Color(0xFF1A1A1A))),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color.lerp(Colors.white, widget.iconColor, 0.6)!,
+                    widget.iconColor,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.iconColor.withValues(alpha: 0.45),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    blurRadius: 4,
+                    offset: const Offset(-2, -2),
+                  ),
+                ],
+              ),
+              child: Icon(widget.icon, size: 22, color: Colors.white),
+            ),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(widget.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))), const SizedBox(height: 1), Text(widget.subtitle, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600))])),
             if (widget.isAction) const Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey)

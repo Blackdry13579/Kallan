@@ -63,7 +63,7 @@ class _CreateDeckScreenState extends State<CreateDeckScreen> {
         textTheme: GoogleFonts.fredokaTextTheme(Theme.of(context).textTheme),
       ),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,

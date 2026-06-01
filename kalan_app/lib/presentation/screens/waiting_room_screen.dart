@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/battle_service.dart';
@@ -29,7 +29,6 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> with TickerProvid
 
   final Color _primaryColor = const Color(0xFF6366F1);
   final Color _accentColor = const Color(0xFFF43F5E);
-  final Color _bgColor = const Color(0xFFF8FAFC);
 
   StreamSubscription? _battleSubscription;
   String _statusMessage = 'En attente...';
@@ -95,7 +94,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> with TickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
@@ -249,3 +248,6 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> with TickerProvid
     );
   }
 }
+
+
+

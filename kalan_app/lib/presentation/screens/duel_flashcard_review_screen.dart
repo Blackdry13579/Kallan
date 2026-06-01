@@ -139,7 +139,7 @@ class _DuelFlashcardReviewScreenState extends State<DuelFlashcardReviewScreen> {
     final currentCard = _flashcards[_currentIndex];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),

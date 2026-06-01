@@ -1,5 +1,6 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -83,7 +84,7 @@ class HomeScreenState extends State<HomeScreen> {
       context: context,
       barrierDismissible: true,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFFF5F2EA),
+        backgroundColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
         content: Column(
@@ -268,16 +269,15 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  final List<Widget> _screens = [
-    const HomeDashboard(),
-    const LibraryScreen(),
-    const CreateDeckScreen(),
-    const LeaderboardScreen(),
-    const ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      HomeDashboard(onCreateTap: () => _showCreateOptions(context)),
+      const LibraryScreen(),
+      const CreateDeckScreen(),
+      const LeaderboardScreen(),
+      const ProfileScreen(),
+    ];
     return BlocListener<UserBloc, UserState>(
       listener: (context, state) {
         if (state is UserLoaded) {
@@ -290,13 +290,13 @@ class HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: Column(
           children: [
             Expanded(
               child: IndexedStack(
                 index: _currentIndex,
-                children: _screens,
+                children: screens,
               ),
             ),
             _buildDownloadBanner(),
@@ -449,8 +449,9 @@ class HomeScreenState extends State<HomeScreen> {
       final FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
+        withData: true,
       );
-      if (result == null || result.files.single.path == null) return;
+      if (result == null) return;
       if (!mounted) return;
 
       dialogShown = true;
@@ -460,7 +461,17 @@ class HomeScreenState extends State<HomeScreen> {
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      final bytes = await File(result.files.single.path!).readAsBytes();
+      // withData: true gives bytes directly (works with content URIs on Android 11+)
+      // fallback to File.readAsBytes() for local paths only
+      final Uint8List bytes;
+      final fileData = result.files.single;
+      if (fileData.bytes != null) {
+        bytes = fileData.bytes!;
+      } else if (fileData.path != null) {
+        bytes = await File(fileData.path!).readAsBytes();
+      } else {
+        throw Exception('Impossible de lire le fichier PDF sélectionné.');
+      }
       final analysis = await PdfService().analyze(bytes: bytes);
 
       if (!mounted) return;
@@ -777,3 +788,4 @@ class _SlidingNotchPainter extends CustomPainter {
     return oldDelegate.notchCenterX != notchCenterX;
   }
 }
+

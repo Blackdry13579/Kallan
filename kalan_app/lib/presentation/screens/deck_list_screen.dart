@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
 import '../blocs/deck/deck_bloc.dart';
@@ -31,7 +31,7 @@ class DeckListScreen extends StatelessWidget {
     };
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(filterSubject ?? 'Mes Decks'),
         backgroundColor: Colors.white,
@@ -179,3 +179,4 @@ class DeckListScreen extends StatelessWidget {
     );
   }
 }
+

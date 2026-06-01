@@ -106,7 +106,7 @@ class _NotificationScreenState extends State<NotificationScreen> with TickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFCF8),
+      backgroundColor: Colors.transparent,
       body: BlocListener<UserBloc, UserState>(
         listener: (context, userState) {
           if (userState is UserLoaded) {
